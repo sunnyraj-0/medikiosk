@@ -1,0 +1,17 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+
+# Vercel CLI project settings
+.vercel/
+
+# Freebuff workspace files
+.freebuff/
+
+# macOS
+.DS_Store
+
+# Logs
+*.log
