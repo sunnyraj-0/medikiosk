@@ -1,1 +1,80 @@
 @import "tailwindcss";
+
+/* Government of India style guide typography: Noto Sans across all scripts,
+   weights Regular 400 / Medium 500 / Semi Bold 600 / Bold 700. */
+@theme {
+  --font-sans: "Noto Sans", "Noto Sans Devanagari", "Noto Sans Bengali",
+    "Noto Sans Arabic", "Noto Sans Kannada", "Noto Sans Tamil", ui-sans-serif,
+    system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
+/* Class-based dark mode: <html class="dark"> */
+@custom-variant dark (&:where(.dark, .dark *));
+
+body {
+  font-family: var(--font-sans);
+}
+
+/* ------------------------------------------------------------------
+   Dark theme. The app's JSX uses a small, consistent light palette,
+   so instead of adding dark: variants to ~2500 lines of markup we
+   remap those utilities when <html class="dark"> is set. Same cascade
+   layer (utilities) + higher specificity (.dark .bg-white) wins.
+   ------------------------------------------------------------------ */
+@layer utilities {
+  html.dark {
+    color-scheme: dark;
+  }
+  html.dark body {
+    background-color: #0b1120;
+    color: #e2e8f0;
+  }
+
+  /* Surfaces */
+  .dark .bg-white { background-color: #111827; }
+  .dark .bg-gray-50 { background-color: #1a2434; }
+  .dark .bg-gray-100 { background-color: #0b1120; }
+  .dark .bg-gray-200 { background-color: #24314a; }
+  .dark .bg-gray-300 { background-color: #334155; }
+  .dark .bg-gray-400 { background-color: #475569; }
+
+  /* Tinted feedback surfaces */
+  .dark .bg-green-50 { background-color: #0f2a1d; }
+  .dark .bg-green-100 { background-color: #14532d; }
+  .dark .bg-blue-50 { background-color: #0f2242; }
+  .dark .bg-red-50 { background-color: #3c1114; }
+  .dark .bg-yellow-50 { background-color: #33240a; }
+  .dark .bg-orange-50 { background-color: #3a1d0a; }
+
+  /* Text */
+  .dark .text-gray-900 { color: #f1f5f9; }
+  .dark .text-gray-800 { color: #e2e8f0; }
+  .dark .text-gray-700 { color: #cbd5e1; }
+  .dark .text-gray-600 { color: #94a3b8; }
+  .dark .text-gray-500 { color: #94a3b8; }
+  .dark .text-gray-400 { color: #64748b; }
+  .dark .text-green-700 { color: #4ade80; }
+  .dark .text-green-800 { color: #86efac; }
+  .dark .text-red-600 { color: #f87171; }
+  .dark .text-red-700 { color: #f87171; }
+  .dark .text-blue-700 { color: #60a5fa; }
+  .dark .text-yellow-800 { color: #fbbf24; }
+  .dark .text-orange-600 { color: #fb923c; }
+
+  /* Borders */
+  .dark .border-gray-100 { border-color: #1e2a3f; }
+  .dark .border-gray-200 { border-color: #24314a; }
+  .dark .border-gray-300 { border-color: #334155; }
+  .dark .border-green-300 { border-color: #14532d; }
+  .dark .border-blue-300 { border-color: #1e3a8a; }
+  .dark .border-red-300 { border-color: #7f1d1d; }
+  .dark .border-yellow-300 { border-color: #713f12; }
+  .dark .border-orange-300 { border-color: #7c2d12; }
+
+  /* Placeholders */
+  .dark .placeholder-gray-400::placeholder { color: #64748b; }
+  .dark .placeholder-gray-500::placeholder { color: #64748b; }
+
+  /* Tricolor bar middle band: white -> slate so it doesn't glow */
+  .dark .via-white { --tw-gradient-via: #64748b; }
+}

@@ -1,0 +1,54 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 600" preserveAspectRatio="xMidYMax slice">
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#2e1065"/>
+      <stop offset="0.5" stop-color="#7f1d1d"/>
+      <stop offset="1" stop-color="#172554"/>
+    </linearGradient>
+    <pattern id="mer" width="34" height="16" patternUnits="userSpaceOnUse">
+      <rect x="0" y="4" width="22" height="12" fill="#160b30"/>
+    </pattern>
+  </defs>
+
+  <rect width="1600" height="600" fill="url(#sky)"/>
+
+  <!-- flag on the central pavilion -->
+  <line x1="800" y1="150" x2="800" y2="238" stroke="#160b30" stroke-width="4"/>
+  <rect x="804" y="150" width="36" height="7" fill="#f97316"/>
+  <rect x="804" y="157" width="36" height="7" fill="#ffffff"/>
+  <rect x="804" y="164" width="36" height="7" fill="#16a34a"/>
+  <circle cx="822" cy="160.5" r="2.2" fill="#1e3a8a"/>
+
+  <!-- curtain walls with battlements -->
+  <rect x="0" y="416" width="640" height="16" fill="url(#mer)"/>
+  <rect x="0" y="430" width="640" height="130" fill="#160b30"/>
+  <rect x="960" y="416" width="640" height="16" fill="url(#mer)"/>
+  <rect x="960" y="430" width="640" height="130" fill="#160b30"/>
+
+  <!-- flanking octagonal towers with chhatri domes -->
+  <rect x="640" y="246" width="60" height="14" fill="url(#mer)"/>
+  <rect x="640" y="258" width="60" height="302" fill="#160b30"/>
+  <path d="M652 246 a18 14 0 0 1 36 0 z" fill="#160b30"/>
+  <line x1="670" y1="224" x2="670" y2="234" stroke="#160b30" stroke-width="3"/>
+  <rect x="900" y="246" width="60" height="14" fill="url(#mer)"/>
+  <rect x="900" y="258" width="60" height="302" fill="#160b30"/>
+  <path d="M912 246 a18 14 0 0 1 36 0 z" fill="#160b30"/>
+  <line x1="930" y1="224" x2="930" y2="234" stroke="#160b30" stroke-width="3"/>
+
+  <!-- central gate block -->
+  <rect x="700" y="288" width="200" height="14" fill="url(#mer)"/>
+  <rect x="700" y="300" width="200" height="260" fill="#160b30"/>
+  <!-- recessed arch (slightly lighter) -->
+  <path d="M770 560 v-130 a30 34 0 0 1 60 0 v130 z" fill="#251347"/>
+
+  <!-- central pavilion above the gate -->
+  <rect x="730" y="228" width="140" height="14" fill="url(#mer)"/>
+  <rect x="730" y="240" width="140" height="60" fill="#160b30"/>
+  <path d="M733 240 a12 10 0 0 1 24 0 z" fill="#160b30"/>
+  <path d="M843 240 a12 10 0 0 1 24 0 z" fill="#160b30"/>
+  <line x1="745" y1="222" x2="745" y2="230" stroke="#160b30" stroke-width="2.5"/>
+  <line x1="855" y1="222" x2="855" y2="230" stroke="#160b30" stroke-width="2.5"/>
+
+  <!-- ground -->
+  <rect x="0" y="556" width="1600" height="44" fill="#120826"/>
+</svg>

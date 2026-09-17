@@ -1,7 +1,58 @@
 import { useEffect, useRef, useState } from 'react';
+import { detectRedFlags, RED_FLAG_RESPONSE, addClinicalAlert } from './clinical';
 
 // ---------- speech language mapping ----------
-const LANGS = { 'हिंदी': 'hi-IN', 'English': 'en-IN', 'ಕನ್ನಡ': 'kn-IN', 'தமிழ்': 'ta-IN' };
+const LANGS = {
+  'हिंदी': 'hi-IN',
+  'English': 'en-IN',
+  'ಕನ್ನಡ': 'kn-IN',
+  'தமிழ்': 'ta-IN',
+  'मराठी': 'mr-IN',
+  'বাংলা': 'bn-IN',
+  'اردو': 'ur-IN'
+};
+
+const LANG_GENDER = {
+  'हिंदी': 'feminine', 'English': 'feminine', 'ಕನ್ನಡ': 'feminine',
+  'தமிழ்': 'feminine', 'मराठी': 'feminine', 'বাংলা': 'feminine', 'اردو': 'feminine'
+};
+
+const LANG_NAME = {
+  'हिंदी': 'Hindi', 'English': 'English', 'ಕನ್ನಡ': 'Kannada',
+  'தமிழ்': 'Tamil', 'मराठी': 'Marathi', 'বাংলা': 'Bengali', 'اردو': 'Urdu'
+};
+
+// ---------- Gemini backend (Python FastAPI voice server) ----------
+const API_BASE = (() => {
+  if (typeof window === 'undefined') return 'http://localhost:8000';
+  const host = window.location.hostname;
+  return host && host !== 'localhost' && host !== '127.0.0.1'
+    ? `http://${host}:8000`
+    : 'http://localhost:8000';
+})();
+
+const sessionId = () => {
+  if (!window.__mkVoiceSession) {
+    window.__mkVoiceSession = 'kiosk-' + Math.random().toString(36).slice(2, 10) + '-' + Date.now();
+  }
+  return window.__mkVoiceSession;
+};
+
+async function backendChat(text) {
+  const res = await fetch(`${API_BASE}/chat/${sessionId()}?message=${encodeURIComponent(text)}`, { method: 'POST' });
+  if (!res.ok) throw new Error(`backend ${res.status}`);
+  const data = await res.json();
+  return data.response;
+}
+
+async function backendVoice(blob) {
+  const fd = new FormData();
+  fd.append('audio', blob, 'speech.webm');
+  const res = await fetch(`${API_BASE}/voice/${sessionId()}`, { method: 'POST', body: fd });
+  if (!res.ok) throw new Error(`backend ${res.status}`);
+  const data = await res.json();
+  return { transcript: (data.transcript || '').trim(), response: data.response || '' };
+}
 
 // ---------- small text helpers ----------
 const isAscii = (s) => /^[\x00-\x7F]+$/.test(s);
@@ -13,6 +64,8 @@ const matches = (t, kws) =>
     if (isAscii(k) && k.length <= 4) return new RegExp(`\\b${escapeRegExp(k)}\\b`).test(t);
     return t.includes(k);
   });
+
+const MAX_RECORD_SECONDS = 20; // hard cap for one spoken turn
 
 const CLEAR = { followUp: null, assessIndex: null, assessAnswers: [] };
 
@@ -27,8 +80,8 @@ const TIME_WORDS = [
 
 // ---------- knowledge base (English + Hindi) ----------
 const GREETING = {
-  en: "Namaste! 🙏 I'm MediKiosk.gov.in — your AYUSH health assistant. Tell me a symptom (headache, fever, stomach, cold, stress, sleep...), ask about Vata/Pitta/Kapha, or say 'health check' and I'll ask you 8 questions to build your Ayurveda profile. What's troubling you today?",
-  hi: "नमस्ते! 🙏 मैं MediKiosk.gov.in हूँ — आपकी आयुष स्वास्थ्य सहायक। कोई लक्षण बताइए (सिरदर्द, बुखार, पेट, खांसी, तनाव, नींद...), वात/पित्त/कफ के बारे में पूछिए, या 'स्वास्थ्य जांच' कहिए और मैं आपसे 8 सवाल पूछकर आपकी आयुर्वेद प्रोफ़ाइल बनाऊँगा। आज आपको क्या परेशानी है?",
+  en: "Namaste, I'm MediKiosk.gov.in, your AYUSH health assistant — tell me a symptom (headache, fever, stomach, cold, stress, sleep), ask about Vata/Pitta/Kapha, or say 'health check' and I'll ask you 8 questions to build your Ayurveda profile.",
+  hi: "नमस्ते, मैं MediKiosk.gov.in हूँ, आपकी आयुष स्वास्थ्य सहायक — कोई लक्षण बताइए (सिरदर्द, बुखार, पेट, खांसी, तनाव, नींद), वात/पित्त/कफ के बारे में पूछिए, या 'स्वास्थ्य जांच' कहिए और मैं आपसे 8 सवाल पूछकर आपकी आयुर्वेद प्रोफ़ाइल बनाऊँगा।",
 };
 
 const SOCIAL = {
@@ -334,6 +387,20 @@ export default function VoiceAssistant({ selectedLanguage = 'English', questions
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [muted, setMuted] = useState(false);
   const [assessProgress, setAssessProgress] = useState(null);
+  const [aiReady, setAiReady] = useState(false);
+  const [aiBusy, setAiBusy] = useState(false);
+  const [level, setLevel] = useState(0);
+  const [recSeconds, setRecSeconds] = useState(0);
+  const [theme, setTheme] = useState(() => localStorage.getItem('mk_theme') || 'light');
+
+  useEffect(() => {
+    document.documentElement.classList.toggle('dark', theme === 'dark');
+    localStorage.setItem('mk_theme', theme);
+  }, [theme]);
+
+  const toggleTheme = () => {
+    setTheme((th) => (th === 'dark' ? 'light' : 'dark'));
+  };
   const [supported] = useState(
     typeof window !== 'undefined' && !!(window.SpeechRecognition || window.webkitSpeechRecognition)
   );
@@ -344,6 +411,15 @@ export default function VoiceAssistant({ selectedLanguage = 'English', questions
   const stateRef = useRef({ followUp: null, assessIndex: null, assessAnswers: [] });
   const recRef = useRef(null);
   const chatRef = useRef(null);
+  const streamRef = useRef(null);
+  const prewarmedRef = useRef(null);
+  const audioCtxRef = useRef(null);
+  const analyserRef = useRef(null);
+  const rafRef = useRef(null);
+  const timerRef = useRef(null);
+  const recordStartRef = useRef(0);
+  const speechStartRef = useRef(null);
+  const audioElRef = useRef(null);
 
   const isHi = lang === 'हिंदी';
   const pick = (entry) => (isHi && entry.hi ? entry.hi : entry.en);
@@ -353,9 +429,40 @@ export default function VoiceAssistant({ selectedLanguage = 'English', questions
     if (el) el.scrollTop = el.scrollHeight;
   }, [messages]);
 
+  // Probe the Gemini voice server once so the UI can show the active AI mode
+  useEffect(() => {
+    let alive = true;
+    fetch(`${API_BASE}/`)
+      .then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
+      .then((d) => { if (alive && d && d.ai === 'Gemini') setAiReady(true); })
+      .catch(() => {});
+    return () => { alive = false; };
+  }, []);
+
+  // Pre-warm the mic (permission + hardware) so "Tap & Speak" starts instantly
+  useEffect(() => {
+    const w = window;
+    if (navigator.mediaDevices && typeof w.MediaRecorder !== 'undefined') {
+      navigator.mediaDevices
+        .getUserMedia({ audio: true })
+        .then((s) => {
+          prewarmedRef.current = s;
+        })
+        .catch(() => {});
+    }
+    if ('speechSynthesis' in window) window.speechSynthesis.getVoices(); // warm the voice list
+  }, []);
+
   useEffect(
     () => () => {
-      if (recRef.current) recRef.current.abort();
+      try { if (recRef.current && recRef.current.state !== 'inactive') recRef.current.stop(); } catch (e) {}
+      try { if (recRef.current && recRef.current.abort) recRef.current.abort(); } catch (e) {}
+      if (streamRef.current) streamRef.current.getTracks().forEach((t) => t.stop());
+      if (prewarmedRef.current) prewarmedRef.current.getTracks().forEach((t) => t.stop());
+      if (timerRef.current) clearInterval(timerRef.current);
+      if (rafRef.current) cancelAnimationFrame(rafRef.current);
+      if (audioCtxRef.current) { try { audioCtxRef.current.close(); } catch (e) {} }
+      if (audioElRef.current) { try { audioElRef.current.pause(); } catch (e) {} }
       if ('speechSynthesis' in window) window.speechSynthesis.cancel();
     },
     []
@@ -363,44 +470,229 @@ export default function VoiceAssistant({ selectedLanguage = 'English', questions
 
   const pushAssistant = (text) => setMessages((m) => [...m, { role: 'assistant', text }]);
 
-  const speak = (text) => {
-    if (muted || !('speechSynthesis' in window)) return;
+  // ---------- speaking: Gemini TTS first, best browser voice as fallback ----------
+  const stopSpeaking = () => {
+    if (audioElRef.current) {
+      try { audioElRef.current.pause(); } catch (e) {}
+      audioElRef.current = null;
+    }
+    if ('speechSynthesis' in window) window.speechSynthesis.cancel();
+    setIsSpeaking(false);
+  };
+
+  const speakWithBrowser = (text) => {
+    if (!('speechSynthesis' in window)) return;
     window.speechSynthesis.cancel();
     const u = new SpeechSynthesisUtterance(text);
-    u.lang = LANGS[lang] || 'en-IN';
-    u.rate = 1;
-    const base = u.lang.split('-')[0].toLowerCase();
-    const voice = window.speechSynthesis
+    const want = LANGS[lang] || 'en-IN';
+    u.lang = want;
+    u.rate = 0.95; // slightly slower reads clearer for patients
+    u.pitch = 1;
+    const base = want.split('-')[0].toLowerCase();
+    const score = (v) => {
+      const vl = v.lang.replace('_', '-').toLowerCase();
+      if (!vl.startsWith(base)) return -1;
+      let s = 0;
+      if (vl === want.toLowerCase()) s += 4;
+      if (/google/i.test(v.name)) s += 3;
+      if (/natural|online|premium|enhanced/i.test(v.name)) s += 3;
+      if (!v.localService) s += 1;
+      return s;
+    };
+    const best = window.speechSynthesis
       .getVoices()
-      .find((v) => v.lang.replace('_', '-').toLowerCase().startsWith(base));
-    if (voice) u.voice = voice;
+      .map((v) => [score(v), v])
+      .filter(([s]) => s >= 0)
+      .sort((a, b) => b[0] - a[0])[0];
+    if (best) u.voice = best[1];
     u.onstart = () => setIsSpeaking(true);
     u.onend = () => setIsSpeaking(false);
     u.onerror = () => setIsSpeaking(false);
     window.speechSynthesis.speak(u);
   };
 
-  const handleUserMessage = (text) => {
+  const speak = async (text) => {
+    if (muted) return;
+    stopSpeaking();
+    setIsSpeaking(true);
+    try {
+      const res = await fetch(`${API_BASE}/tts?text=${encodeURIComponent(text)}`, { method: 'POST' });
+      if (!res.ok) throw new Error(`tts ${res.status}`);
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const audio = new Audio(url);
+      audioElRef.current = audio;
+      audio.onended = () => { URL.revokeObjectURL(url); setIsSpeaking(false); };
+      audio.onerror = () => { URL.revokeObjectURL(url); speakWithBrowser(text); };
+      await audio.play();
+    } catch (e) {
+      speakWithBrowser(text);
+    }
+  };
+
+  // Keep chat replies insightful but tight: one sentence, no emojis, no repeats
+  const sanitizeReply = (raw) => {
+    if (!raw) return raw;
+    let out = String(raw)
+      .replace(/[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\u{1F1E6}-\u{1F1FF}\u{2B00}-\u{2BFF}\u{2190}-\u{21FF}\uFE0F\u2764\u2705\u274C\u2757]/gu, '')
+      .replace(/[\u{1F900}-\u{1F9FF}]/gu, '')
+      .replace(/[*#`_>]+/g, '')
+      .replace(/\s+/g, ' ')
+      .trim();
+    const m = out.match(/^(.+?[.?!])(?:\s|$)/s);
+    if (m && out.length > m[1].length + 40) out = m[1];
+    return out;
+  };
+
+  const handleUserMessage = async (text) => {
     const clean = (text || '').trim();
-    if (!clean) return;
+    if (!clean || aiBusy) return;
     setMessages((m) => [...m, { role: 'user', text: clean }]);
-    const result = buildReply(clean, lang, stateRef.current, questions);
-    stateRef.current = result.state;
-    setMessages((m) => [...m, { role: 'assistant', text: result.text }]);
-    setAssessProgress(
-      result.state.assessIndex !== null
-        ? { current: result.state.assessIndex + 1, total: questions.length }
-        : null
-    );
-    speak(result.text);
+    setAiBusy(true);
+    // PDF: continuous red-flag surveillance — alerts fire instantly, before any model call
+    const flags = detectRedFlags(clean);
+    if (flags.length) {
+      addClinicalAlert(flags, 'Voice Assistant', clean.slice(0, 120));
+    }
+    let reply = null;
+    if (flags.length) {
+      reply = RED_FLAG_RESPONSE;
+    } else if (aiReady) {
+      try {
+        reply = await backendChat(clean);
+      } catch (e) {
+        reply = null;
+      }
+    }
+    if (reply === null) {
+      // Fallback: the built-in offline AYUSH engine
+      const result = buildReply(clean, lang, stateRef.current, questions);
+      stateRef.current = result.state;
+      reply = result.text;
+      setAssessProgress(
+        result.state.assessIndex !== null
+          ? { current: result.state.assessIndex + 1, total: questions.length }
+          : null
+      );
+    }
+    setAiBusy(false);
+    reply = sanitizeReply(reply);
+    setMessages((m) => [...m, { role: 'assistant', text: reply }]);
+    speak(reply);
   };
 
   const startListening = () => {
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    const canRecord = typeof navigator !== 'undefined' && navigator.mediaDevices && typeof MediaRecorder !== 'undefined';
+
+    // Gemini voice path: record audio, let the backend transcribe + answer.
+    // Smart listening: auto-stops shortly after the user stops talking,
+    // shows a live mic level meter, hard-caps length, and supports barge-in.
+    if ((!SR || aiReady) && canRecord) {
+      stopSpeaking(); // barge-in: talking to the mic always interrupts the assistant
+      const begin = (stream) => {
+        streamRef.current = stream;
+        const mime = MediaRecorder.isTypeSupported('audio/webm;codecs=opus') ? 'audio/webm;codecs=opus' : undefined;
+        const recorder = new MediaRecorder(stream, mime ? { mimeType: mime } : undefined);
+        const chunks = [];
+        recRef.current = recorder;
+        speechStartRef.current = null;
+        recordStartRef.current = Date.now();
+        setRecSeconds(0);
+        timerRef.current = setInterval(() => setRecSeconds(Math.round((Date.now() - recordStartRef.current) / 1000)), 500);
+
+        const finish = () => {
+          if (recorder.state !== 'inactive') recorder.stop();
+        };
+
+        recorder.ondataavailable = (e) => e.data.size > 0 && chunks.push(e.data);
+        recorder.onstop = async () => {
+          if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
+          if (rafRef.current) { cancelAnimationFrame(rafRef.current); rafRef.current = null; }
+          if (audioCtxRef.current) { try { audioCtxRef.current.close(); } catch (e) {} audioCtxRef.current = null; }
+          stream.getTracks().forEach((t) => t.stop());
+          streamRef.current = null;
+          setIsListening(false);
+          setLevel(0);
+          const blob = new Blob(chunks, { type: recorder.mimeType || 'audio/webm' });
+          if (blob.size < 2000) {
+            pushAssistant("I didn't catch that — tap the mic and try again, or type below.");
+            return;
+          }
+          setAiBusy(true);
+          try {
+            const { transcript, response } = await backendVoice(blob);
+            setAiBusy(false);
+            if (!transcript) {
+              pushAssistant("I didn't catch that — tap the mic and try again, or type below.");
+              return;
+            }
+            setMessages((m) => [...m, { role: 'user', text: transcript }]);
+            setMessages((m) => [...m, { role: 'assistant', text: response }]);
+            speak(response);
+          } catch (err) {
+            setAiBusy(false);
+            if (SR) { startWebSpeech(SR); } else {
+              pushAssistant('The AI voice service is unreachable right now — please type your question below.');
+            }
+          }
+        };
+
+        // Live mic level + silence auto-stop
+        try {
+          const Ctx = window.AudioContext || window.webkitAudioContext;
+          const ctx = new Ctx();
+          audioCtxRef.current = ctx;
+          const src = ctx.createMediaStreamSource(stream);
+          const analyser = ctx.createAnalyser();
+          analyser.fftSize = 512;
+          src.connect(analyser);
+          analyserRef.current = analyser;
+          const buf = new Uint8Array(analyser.frequencyBinCount);
+          let spoke = false;
+          let lastVoiceAt = Date.now();
+          const tick = () => {
+            analyser.getByteTimeDomainData(buf);
+            let sum = 0;
+            for (let i = 0; i < buf.length; i++) { const v = (buf[i] - 128) / 128; sum += v * v; }
+            const rms = Math.sqrt(sum / buf.length);
+            setLevel(Math.min(1, rms * 4));
+            if (rms > 0.09) { spoke = true; lastVoiceAt = Date.now(); if (speechStartRef.current === null) speechStartRef.current = Date.now(); }
+            const elapsed = Date.now() - recordStartRef.current;
+            if (elapsed > MAX_RECORD_SECONDS * 1000) { finish(); return; }
+            if (spoke && Date.now() - lastVoiceAt > 1600) { finish(); return; } // user paused → send
+            rafRef.current = requestAnimationFrame(tick);
+          };
+          rafRef.current = requestAnimationFrame(tick);
+        } catch (e) { /* metering optional */ }
+
+        recorder.start();
+        setIsListening(true);
+      };
+
+      if (prewarmedRef.current) {
+        const s = prewarmedRef.current;
+        prewarmedRef.current = null;
+        begin(s);
+      } else {
+        navigator.mediaDevices
+          .getUserMedia({ audio: true })
+          .then(begin)
+          .catch(() => {
+            pushAssistant('Microphone access was denied. 🙅 Please allow the microphone, or type your question below.');
+          });
+      }
+      return;
+    }
+
     if (!SR) {
       pushAssistant("Voice input isn't supported in this browser — please use the text box below. 😊");
       return;
     }
+    startWebSpeech(SR);
+  };
+
+  const startWebSpeech = (SR) => {
     try {
       const rec = new SR();
       recRef.current = rec;
@@ -436,7 +728,9 @@ export default function VoiceAssistant({ selectedLanguage = 'English', questions
 
   const toggleListening = () => {
     if (isListening) {
-      if (recRef.current) recRef.current.stop();
+      const r = recRef.current;
+      if (r) { try { if (r.state === 'recording') r.stop(); else if (r.stop) r.stop(); } catch (e) {} }
+      if (rafRef.current) { cancelAnimationFrame(rafRef.current); rafRef.current = null; }
       setIsListening(false);
       return;
     }
@@ -453,7 +747,16 @@ export default function VoiceAssistant({ selectedLanguage = 'English', questions
     <div className="min-h-screen bg-gray-100 flex items-center justify-center p-4 relative">
       <img src="/chakra.png" alt="" aria-hidden="true" className="absolute inset-0 w-full h-full object-cover opacity-10 pointer-events-none" />
       <div className="w-full max-w-sm bg-white rounded-xl shadow-lg overflow-hidden">
-        <div className="h-2 bg-gradient-to-r from-orange-400 via-white to-green-700"></div>
+        <div className="h-2 bg-gradient-to-r from-orange-400 via-white to-green-700 relative">
+          <button
+            onClick={toggleTheme}
+            title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+            aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+            className="absolute top-2.5 right-3 z-20 w-9 h-9 rounded-full bg-white border border-gray-300 shadow-sm flex items-center justify-center text-lg hover:bg-gray-100 transition"
+          >
+            {theme === 'dark' ? '☀️' : '🌙'}
+          </button>
+        </div>
 
         <div className="h-screen flex flex-col">
           {/* header */}
@@ -468,11 +771,11 @@ export default function VoiceAssistant({ selectedLanguage = 'English', questions
             <div className="text-center">
               <p className="text-xs font-semibold text-gray-600 uppercase">🎙️ Voice Assistant</p>
               <p className="text-[10px] text-gray-500 font-medium">
-                {lang} • {supported ? '🎤 voice ready' : '⌨️ text mode'}
+                {lang} • {aiReady ? '✨ Gemini AI' : supported ? '🎤 voice ready' : '⌨️ text mode'}
               </p>
             </div>
             <button
-              onClick={() => setMuted((m) => !m)}
+              onClick={() => setMuted((m) => { if (!m) stopSpeaking(); return !m; })}
               className="w-8 h-8 flex items-center justify-center bg-white border border-gray-300 rounded-lg text-base hover:bg-gray-100 transition"
               aria-label={muted ? 'Unmute voice' : 'Mute voice'}
             >
@@ -480,13 +783,13 @@ export default function VoiceAssistant({ selectedLanguage = 'English', questions
             </button>
           </div>
 
-          {/* language chips */}
-          <div className="flex gap-1.5 px-4 py-2 bg-gray-50 border-b border-gray-200">
+          {/* language chips — single line, compact */}
+          <div className="flex flex-nowrap gap-1 px-3 py-1.5 bg-gray-50 border-b border-gray-200 overflow-hidden">
             {Object.keys(LANGS).map((l) => (
               <button
                 key={l}
                 onClick={() => setLang(l)}
-                className={`px-2.5 py-1 text-[11px] font-semibold rounded-full transition ${
+                className={`px-2 py-0.5 text-[10px] font-semibold rounded-full whitespace-nowrap shrink-0 transition ${
                   lang === l ? 'bg-green-700 text-white' : 'bg-white text-gray-700 border border-gray-300'
                 }`}
               >
@@ -497,12 +800,17 @@ export default function VoiceAssistant({ selectedLanguage = 'English', questions
 
           {/* chat area */}
           <div ref={chatRef} className="flex-1 overflow-y-auto px-4 py-4 space-y-3 bg-gray-50">
-            {!supported && (
+            {aiReady && (
+              <div className="bg-green-50 border border-green-200 rounded-lg px-3 py-2 text-[11px] text-green-800 font-medium">
+                Gemini AI is on — I understand Hindi, English & Hinglish and remember our conversation. Tap the mic and talk naturally.
+              </div>
+            )}
+            {!supported && !aiReady && (
               <div className="bg-yellow-50 border border-yellow-300 rounded-lg px-3 py-2 text-[11px] text-yellow-800 font-medium">
                 🎙️ Voice input isn't supported in this browser — use the text box below (voice output still works).
               </div>
             )}
-            {supported && isElectron && (
+            {supported && isElectron && !aiReady && (
               <div className="bg-yellow-50 border border-yellow-300 rounded-lg px-3 py-2 text-[11px] text-yellow-800 font-medium">
                 ⚠️ This preview window can't reach cloud voice recognition. For working voice input, open{' '}
                 <span className="font-bold">{origin}</span> in Google Chrome or on your phone — or type below
@@ -530,9 +838,26 @@ export default function VoiceAssistant({ selectedLanguage = 'English', questions
               </div>
             )}
             {isListening && (
-              <div className="flex justify-center">
+              <div className="flex flex-col items-center gap-2">
                 <span className="bg-red-100 text-red-700 text-[11px] font-bold px-3 py-1 rounded-full animate-pulse">
-                  🔴 Listening… speak now
+                  🔴 Listening… speak now{recSeconds > 0 ? ` (${recSeconds}s)` : ''}
+                </span>
+                <div className="w-40 h-2 bg-gray-200 rounded-full overflow-hidden">
+                  <div
+                    className="h-full rounded-full transition-[width] duration-75"
+                    style={{
+                      width: `${Math.round(level * 100)}%`,
+                      background: level > 0.55 ? '#dc2626' : level > 0.28 ? '#f59e0b' : '#16a34a',
+                    }}
+                  />
+                </div>
+                <span className="text-[10px] text-gray-500 font-medium">I'll send it automatically when you pause</span>
+              </div>
+            )}
+            {aiBusy && !isListening && (
+              <div className="flex justify-center">
+                <span className="bg-purple-100 text-purple-700 text-[11px] font-bold px-3 py-1 rounded-full animate-pulse">
+                  ✨ MediKiosk AI is thinking…
                 </span>
               </div>
             )}
@@ -565,11 +890,12 @@ export default function VoiceAssistant({ selectedLanguage = 'English', questions
             </div>
             <button
               onClick={toggleListening}
+              disabled={aiBusy}
               className={`w-full py-3 rounded-xl font-bold text-white transition ${
-                isListening ? 'bg-red-600 hover:bg-red-700' : 'bg-green-700 hover:bg-green-800'
+                isListening ? 'bg-red-600 hover:bg-red-700' : aiBusy ? 'bg-gray-400' : 'bg-green-700 hover:bg-green-800'
               }`}
             >
-              {isListening ? '⏹ Stop Listening' : '🎤 Tap & Speak'}
+              {isListening ? '⏹ Stop & Send' : aiBusy ? '✨ Thinking…' : '🎤 Tap & Speak'}
             </button>
             <p className="text-[10px] text-gray-400 text-center">
               I'm an AI assistant — for serious or lasting symptoms, please see a doctor.

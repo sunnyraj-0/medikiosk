@@ -1,0 +1,206 @@
+instruction,intent,response,language,next_questions,next_action
+Patient says: Hello MediKiosk,greeting,"Hello! I'm MediKiosk. I can help record your symptoms, organize medical reports, review your medical history, and guide you to the appropriate next step.",en,"[""user_goal""]",
+Patient says: Hi,greeting,"Hello! I'm MediKiosk. I can help record your symptoms, organize medical reports, review your medical history, and guide you to the appropriate next step.",en,"[""user_goal""]",
+"Patient says: Hello, I need help",greeting,"Hello! I'm MediKiosk. I can help record your symptoms, organize medical reports, review your medical history, and guide you to the appropriate next step.",en,"[""user_goal""]",
+Patient says: Good morning MediKiosk,greeting,"Hello! I'm MediKiosk. I can help record your symptoms, organize medical reports, review your medical history, and guide you to the appropriate next step.",en,"[""user_goal""]",
+Patient says: Namaste,greeting,Namaste! Main MediKiosk hoon. Main aapke symptoms aur medical reports ko organize karne aur next step samajhne mein madad kar sakta hoon.,hi,"[""user_goal""]",
+Patient says: Hello MediKiosk,greeting,Namaste! Main MediKiosk hoon. Main aapke symptoms aur medical reports ko organize karne aur next step samajhne mein madad kar sakta hoon.,hi,"[""user_goal""]",
+Patient says: Mujhe help chahiye,greeting,Namaste! Main MediKiosk hoon. Main aapke symptoms aur medical reports ko organize karne aur next step samajhne mein madad kar sakta hoon.,hi,"[""user_goal""]",
+Patient says: Namaskar,greeting,Namaste! Main MediKiosk hoon. Main aapke symptoms aur medical reports ko organize karne aur next step samajhne mein madad kar sakta hoon.,hi,"[""user_goal""]",
+Patient says: Hi MediKiosk,greeting,"Bilkul. Bataiye aapko kis cheez mein help chahiye—symptoms record karne, report dekhne, appointment ya medical history?",hinglish,"[""user_goal""]",
+Patient says: hello bhai help chahiye,greeting,"Bilkul. Bataiye aapko kis cheez mein help chahiye—symptoms record karne, report dekhne, appointment ya medical history?",hinglish,"[""user_goal""]",
+Patient says: MediKiosk suno,greeting,"Bilkul. Bataiye aapko kis cheez mein help chahiye—symptoms record karne, report dekhne, appointment ya medical history?",hinglish,"[""user_goal""]",
+Patient says: mujhe medical help chahiye,greeting,"Bilkul. Bataiye aapko kis cheez mein help chahiye—symptoms record karne, report dekhne, appointment ya medical history?",hinglish,"[""user_goal""]",
+Patient says: Speak in Hindi,language_change,Sure. I'll continue in Hindi.,en,,change_language_hi
+Patient says: Change language to Hindi,language_change,Sure. I'll continue in Hindi.,en,,change_language_hi
+Patient says: I want to use Hindi,language_change,Sure. I'll continue in Hindi.,en,,change_language_hi
+Patient says: English mein baat karo,language_change,Bilkul. Ab main English mein continue karunga.,hi,,change_language_en
+Patient says: Language English kar do,language_change,Bilkul. Ab main English mein continue karunga.,hi,,change_language_en
+Patient says: Mujhe English use karni hai,language_change,Bilkul. Ab main English mein continue karunga.,hi,,change_language_en
+Patient says: I want to use voice,voice_mode,"Sure. Voice mode is ready. You can speak naturally, and I'll ask one question at a time.",en,,enable_voice
+Patient says: Can I talk instead of typing,voice_mode,"Sure. Voice mode is ready. You can speak naturally, and I'll ask one question at a time.",en,,enable_voice
+Patient says: Turn on voice mode,voice_mode,"Sure. Voice mode is ready. You can speak naturally, and I'll ask one question at a time.",en,,enable_voice
+Patient says: Voice se use karna hai,voice_mode,Bilkul. Aap voice ke through naturally baat kar sakte hain. Main ek-ek karke questions poochunga.,hi,,enable_voice
+Patient says: Mujhe bolkar baat karni hai,voice_mode,Bilkul. Aap voice ke through naturally baat kar sakte hain. Main ek-ek karke questions poochunga.,hi,,enable_voice
+"Patient says: Typing nahi karni, voice chahiye",voice_mode,Bilkul. Aap voice ke through naturally baat kar sakte hain. Main ek-ek karke questions poochunga.,hi,,enable_voice
+Patient says: I have a headache,symptom_reporting,"I understand. I'll record that symptom. When did it start, and how severe is it from 0 to 10?",en,"[""onset"", ""severity"", ""associated_symptoms""]",
+Patient says: My head hurts,symptom_reporting,"I understand. I'll record that symptom. When did it start, and how severe is it from 0 to 10?",en,"[""onset"", ""severity"", ""associated_symptoms""]",
+Patient says: Sir mein dard hai,symptom_reporting,"I understand. I'll record that symptom. When did it start, and how severe is it from 0 to 10?",en,"[""onset"", ""severity"", ""associated_symptoms""]",
+Patient says: sar dukh raha hai,symptom_reporting,"I understand. I'll record that symptom. When did it start, and how severe is it from 0 to 10?",en,"[""onset"", ""severity"", ""associated_symptoms""]",
+Patient says: mere head mein pain hai,symptom_reporting,"I understand. I'll record that symptom. When did it start, and how severe is it from 0 to 10?",en,"[""onset"", ""severity"", ""associated_symptoms""]",
+Patient says: I have fever,symptom_reporting,"I understand. I'll record that symptom. When did it start, and how severe is it from 0 to 10?",en,"[""onset"", ""severity"", ""associated_symptoms""]",
+Patient says: Mujhe bukhar hai,symptom_reporting,"I understand. I'll record that symptom. When did it start, and how severe is it from 0 to 10?",en,"[""onset"", ""severity"", ""associated_symptoms""]",
+Patient says: fever aa raha hai,symptom_reporting,"I understand. I'll record that symptom. When did it start, and how severe is it from 0 to 10?",en,"[""onset"", ""severity"", ""associated_symptoms""]",
+Patient says: body feels hot and I have fever,symptom_reporting,"I understand. I'll record that symptom. When did it start, and how severe is it from 0 to 10?",en,"[""onset"", ""severity"", ""associated_symptoms""]",
+Patient says: I have a cough,symptom_reporting,"I understand. I'll record that symptom. When did it start, and how severe is it from 0 to 10?",en,"[""onset"", ""severity"", ""associated_symptoms""]",
+Patient says: Mujhe khansi hai,symptom_reporting,"I understand. I'll record that symptom. When did it start, and how severe is it from 0 to 10?",en,"[""onset"", ""severity"", ""associated_symptoms""]",
+Patient says: khansi ho rahi hai,symptom_reporting,"I understand. I'll record that symptom. When did it start, and how severe is it from 0 to 10?",en,"[""onset"", ""severity"", ""associated_symptoms""]",
+Patient says: I have been coughing,symptom_reporting,"I understand. I'll record that symptom. When did it start, and how severe is it from 0 to 10?",en,"[""onset"", ""severity"", ""associated_symptoms""]",
+Patient says: My stomach hurts,symptom_reporting,"I understand. I'll record that symptom. When did it start, and how severe is it from 0 to 10?",en,"[""onset"", ""severity"", ""associated_symptoms""]",
+Patient says: Mere pet mein dard hai,symptom_reporting,"I understand. I'll record that symptom. When did it start, and how severe is it from 0 to 10?",en,"[""onset"", ""severity"", ""associated_symptoms""]",
+Patient says: pet mein pain ho raha hai,symptom_reporting,"I understand. I'll record that symptom. When did it start, and how severe is it from 0 to 10?",en,"[""onset"", ""severity"", ""associated_symptoms""]",
+Patient says: stomach is hurting,symptom_reporting,"I understand. I'll record that symptom. When did it start, and how severe is it from 0 to 10?",en,"[""onset"", ""severity"", ""associated_symptoms""]",
+Patient says: I am vomiting,symptom_reporting,"I understand. I'll record that symptom. When did it start, and how severe is it from 0 to 10?",en,"[""onset"", ""severity"", ""associated_symptoms""]",
+Patient says: Mujhe ulti ho rahi hai,symptom_reporting,"I understand. I'll record that symptom. When did it start, and how severe is it from 0 to 10?",en,"[""onset"", ""severity"", ""associated_symptoms""]",
+Patient says: vomit aa rahi hai,symptom_reporting,"I understand. I'll record that symptom. When did it start, and how severe is it from 0 to 10?",en,"[""onset"", ""severity"", ""associated_symptoms""]",
+Patient says: I have been throwing up,symptom_reporting,"I understand. I'll record that symptom. When did it start, and how severe is it from 0 to 10?",en,"[""onset"", ""severity"", ""associated_symptoms""]",
+Patient says: I have loose motions,symptom_reporting,"I understand. I'll record that symptom. When did it start, and how severe is it from 0 to 10?",en,"[""onset"", ""severity"", ""associated_symptoms""]",
+Patient says: Dast ho rahe hain,symptom_reporting,"I understand. I'll record that symptom. When did it start, and how severe is it from 0 to 10?",en,"[""onset"", ""severity"", ""associated_symptoms""]",
+Patient says: pet kharab hai aur loose motions hain,symptom_reporting,"I understand. I'll record that symptom. When did it start, and how severe is it from 0 to 10?",en,"[""onset"", ""severity"", ""associated_symptoms""]",
+Patient says: I have diarrhea,symptom_reporting,"I understand. I'll record that symptom. When did it start, and how severe is it from 0 to 10?",en,"[""onset"", ""severity"", ""associated_symptoms""]",
+Patient says: My back hurts,symptom_reporting,"I understand. I'll record that symptom. When did it start, and how severe is it from 0 to 10?",en,"[""onset"", ""severity"", ""associated_symptoms""]",
+Patient says: Kamar mein dard hai,symptom_reporting,"I understand. I'll record that symptom. When did it start, and how severe is it from 0 to 10?",en,"[""onset"", ""severity"", ""associated_symptoms""]",
+Patient says: back pain ho raha hai,symptom_reporting,"I understand. I'll record that symptom. When did it start, and how severe is it from 0 to 10?",en,"[""onset"", ""severity"", ""associated_symptoms""]",
+Patient says: meri kamar dukh rahi hai,symptom_reporting,"I understand. I'll record that symptom. When did it start, and how severe is it from 0 to 10?",en,"[""onset"", ""severity"", ""associated_symptoms""]",
+Patient says: I have tooth pain,symptom_reporting,"I understand. I'll record that symptom. When did it start, and how severe is it from 0 to 10?",en,"[""onset"", ""severity"", ""associated_symptoms""]",
+Patient says: Daant mein dard hai,symptom_reporting,"I understand. I'll record that symptom. When did it start, and how severe is it from 0 to 10?",en,"[""onset"", ""severity"", ""associated_symptoms""]",
+Patient says: toothache ho raha hai,symptom_reporting,"I understand. I'll record that symptom. When did it start, and how severe is it from 0 to 10?",en,"[""onset"", ""severity"", ""associated_symptoms""]",
+Patient says: mere daant mein pain hai,symptom_reporting,"I understand. I'll record that symptom. When did it start, and how severe is it from 0 to 10?",en,"[""onset"", ""severity"", ""associated_symptoms""]",
+Patient says: My throat hurts,symptom_reporting,"I understand. I'll record that symptom. When did it start, and how severe is it from 0 to 10?",en,"[""onset"", ""severity"", ""associated_symptoms""]",
+Patient says: Gale mein dard hai,symptom_reporting,"I understand. I'll record that symptom. When did it start, and how severe is it from 0 to 10?",en,"[""onset"", ""severity"", ""associated_symptoms""]",
+Patient says: gala dukh raha hai,symptom_reporting,"I understand. I'll record that symptom. When did it start, and how severe is it from 0 to 10?",en,"[""onset"", ""severity"", ""associated_symptoms""]",
+Patient says: I have a sore throat,symptom_reporting,"I understand. I'll record that symptom. When did it start, and how severe is it from 0 to 10?",en,"[""onset"", ""severity"", ""associated_symptoms""]",
+Patient says: subah se pet mein dard hai,symptom_reporting,Samajh gaya. Main ise aapki symptom history mein record karta hoon. Ye kab se hai aur 0 se 10 mein kitna severe hai?,hinglish,"[""onset"", ""severity"", ""associated_symptoms""]",
+Patient says: kal se sir bahut dukh raha hai,symptom_reporting,Samajh gaya. Main ise aapki symptom history mein record karta hoon. Ye kab se hai aur 0 se 10 mein kitna severe hai?,hinglish,"[""onset"", ""severity"", ""associated_symptoms""]",
+Patient says: teen din se khansi hai,symptom_reporting,Samajh gaya. Main ise aapki symptom history mein record karta hoon. Ye kab se hai aur 0 se 10 mein kitna severe hai?,hinglish,"[""onset"", ""severity"", ""associated_symptoms""]",
+Patient says: raat se fever hai,symptom_reporting,Samajh gaya. Main ise aapki symptom history mein record karta hoon. Ye kab se hai aur 0 se 10 mein kitna severe hai?,hinglish,"[""onset"", ""severity"", ""associated_symptoms""]",
+Patient says: right side pet mein pain hai,symptom_reporting,Samajh gaya. Main ise aapki symptom history mein record karta hoon. Ye kab se hai aur 0 se 10 mein kitna severe hai?,hinglish,"[""onset"", ""severity"", ""associated_symptoms""]",
+Patient says: chest mein discomfort hai,symptom_reporting,Samajh gaya. Main ise aapki symptom history mein record karta hoon. Ye kab se hai aur 0 se 10 mein kitna severe hai?,hinglish,"[""onset"", ""severity"", ""associated_symptoms""]",
+Patient says: body pain ho raha hai,symptom_reporting,Samajh gaya. Main ise aapki symptom history mein record karta hoon. Ye kab se hai aur 0 se 10 mein kitna severe hai?,hinglish,"[""onset"", ""severity"", ""associated_symptoms""]",
+Patient says: mujhe weakness feel ho rahi hai,symptom_reporting,Samajh gaya. Main ise aapki symptom history mein record karta hoon. Ye kab se hai aur 0 se 10 mein kitna severe hai?,hinglish,"[""onset"", ""severity"", ""associated_symptoms""]",
+Patient says: Since this morning,symptom_duration,"Thanks. I've recorded the duration. Are the symptoms getting better, worse, or staying the same?",en,"[""progression""]",
+Patient says: For three days,symptom_duration,"Thanks. I've recorded the duration. Are the symptoms getting better, worse, or staying the same?",en,"[""progression""]",
+Patient says: It started last night,symptom_duration,"Thanks. I've recorded the duration. Are the symptoms getting better, worse, or staying the same?",en,"[""progression""]",
+Patient says: For about a week,symptom_duration,"Thanks. I've recorded the duration. Are the symptoms getting better, worse, or staying the same?",en,"[""progression""]",
+Patient says: It is 7 out of 10,symptom_severity,Got it. I've recorded the severity. Are you having any other symptoms along with it?,en,"[""associated_symptoms""]",
+Patient says: About 5,symptom_severity,Got it. I've recorded the severity. Are you having any other symptoms along with it?,en,"[""associated_symptoms""]",
+Patient says: Very severe,symptom_severity,Got it. I've recorded the severity. Are you having any other symptoms along with it?,en,"[""associated_symptoms""]",
+Patient says: Mild pain,symptom_severity,Got it. I've recorded the severity. Are you having any other symptoms along with it?,en,"[""associated_symptoms""]",
+Patient says: 7 out of 10 hai,symptom_severity,Theek hai. Severity note kar li hai. Kya iske saath koi aur symptom bhi ho raha hai?,hi,"[""associated_symptoms""]",
+Patient says: 5 hai,symptom_severity,Theek hai. Severity note kar li hai. Kya iske saath koi aur symptom bhi ho raha hai?,hi,"[""associated_symptoms""]",
+Patient says: bahut zyada hai,symptom_severity,Theek hai. Severity note kar li hai. Kya iske saath koi aur symptom bhi ho raha hai?,hi,"[""associated_symptoms""]",
+Patient says: thoda sa dard hai,symptom_severity,Theek hai. Severity note kar li hai. Kya iske saath koi aur symptom bhi ho raha hai?,hi,"[""associated_symptoms""]",
+Patient says: I also have fever,associated_symptoms,Thanks. I've recorded that. I'll continue with a few relevant history questions.,en,"[""relevant_history""]",
+Patient says: There is vomiting too,associated_symptoms,Thanks. I've recorded that. I'll continue with a few relevant history questions.,en,"[""relevant_history""]",
+Patient says: I feel dizzy,associated_symptoms,Thanks. I've recorded that. I'll continue with a few relevant history questions.,en,"[""relevant_history""]",
+Patient says: No other symptoms,associated_symptoms,Thanks. I've recorded that. I'll continue with a few relevant history questions.,en,"[""relevant_history""]",
+Patient says: fever bhi hai,associated_symptoms,"Theek hai, maine note kar liya. Ab main kuch relevant history questions poochunga.",hinglish,"[""relevant_history""]",
+Patient says: vomiting bhi ho rahi hai,associated_symptoms,"Theek hai, maine note kar liya. Ab main kuch relevant history questions poochunga.",hinglish,"[""relevant_history""]",
+Patient says: chakkar aa rahe hain,associated_symptoms,"Theek hai, maine note kar liya. Ab main kuch relevant history questions poochunga.",hinglish,"[""relevant_history""]",
+Patient says: aur kuch nahi ho raha,associated_symptoms,"Theek hai, maine note kar liya. Ab main kuch relevant history questions poochunga.",hinglish,"[""relevant_history""]",
+Patient says: I have severe chest pain and difficulty breathing,emergency,This may be an emergency. Please seek immediate medical attention or contact your local emergency service now. Do not wait for an AI assessment.,en,,emergency_escalation
+Patient says: Mere seene mein bahut dard hai aur saans lene mein dikkat hai,emergency,This may be an emergency. Please seek immediate medical attention or contact your local emergency service now. Do not wait for an AI assessment.,hi,,emergency_escalation
+Patient says: I am unconscious,emergency,This may be an emergency. Please seek immediate medical attention or contact your local emergency service now. Do not wait for an AI assessment.,en,,emergency_escalation
+Patient says: Patient is not responding,emergency,This may be an emergency. Please seek immediate medical attention or contact your local emergency service now. Do not wait for an AI assessment.,en,,emergency_escalation
+Patient says: Mujhe behoshi aa rahi hai aur saans mein problem hai,emergency,This may be an emergency. Please seek immediate medical attention or contact your local emergency service now. Do not wait for an AI assessment.,hi,,emergency_escalation
+Patient says: I am having a seizure right now,emergency,This may be an emergency. Please seek immediate medical attention or contact your local emergency service now. Do not wait for an AI assessment.,en,,emergency_escalation
+Patient says: Mujhe achanak bolne mein dikkat aur ek side weakness ho rahi hai,emergency,This may be an emergency. Please seek immediate medical attention or contact your local emergency service now. Do not wait for an AI assessment.,hi,,emergency_escalation
+Patient says: There is severe bleeding that will not stop,emergency,This may be an emergency. Please seek immediate medical attention or contact your local emergency service now. Do not wait for an AI assessment.,en,,emergency_escalation
+Patient says: I want to upload my blood report,report_upload,Sure. Please upload a clear photo or PDF of the report. I can help extract and organize the information for your medical record.,en,,request_document
+Patient says: Upload my medical report,report_upload,Sure. Please upload a clear photo or PDF of the report. I can help extract and organize the information for your medical record.,en,,request_document
+Patient says: I have a PDF report,report_upload,Sure. Please upload a clear photo or PDF of the report. I can help extract and organize the information for your medical record.,en,,request_document
+Patient says: Can I scan this report?,report_upload,Sure. Please upload a clear photo or PDF of the report. I can help extract and organize the information for your medical record.,en,,request_document
+Patient says: meri report upload karo,report_upload,Bilkul. Report ka clear photo ya PDF upload kijiye. Main uski information aapke medical record mein organize karne mein help karunga.,hinglish,,request_document
+Patient says: blood test ki report hai,report_upload,Bilkul. Report ka clear photo ya PDF upload kijiye. Main uski information aapke medical record mein organize karne mein help karunga.,hinglish,,request_document
+Patient says: report scan karni hai,report_upload,Bilkul. Report ka clear photo ya PDF upload kijiye. Main uski information aapke medical record mein organize karne mein help karunga.,hinglish,,request_document
+Patient says: PDF report hai meri,report_upload,Bilkul. Report ka clear photo ya PDF upload kijiye. Main uski information aapke medical record mein organize karne mein help karunga.,hinglish,,request_document
+Patient says: Explain my blood report,report_summary,I can summarize the values shown in your report and flag items that may need discussion with a clinician. I won't replace a doctor's diagnosis.,en,"[""select_report"", ""clinical_context""]",
+Patient says: Summarize my report,report_summary,I can summarize the values shown in your report and flag items that may need discussion with a clinician. I won't replace a doctor's diagnosis.,en,"[""select_report"", ""clinical_context""]",
+Patient says: What does this report say?,report_summary,I can summarize the values shown in your report and flag items that may need discussion with a clinician. I won't replace a doctor's diagnosis.,en,"[""select_report"", ""clinical_context""]",
+Patient says: Meri blood report samjhao,report_summary,Main report mein diye gaye values ko simple language mein summarize kar sakta hoon aur doctor se discuss karne layak points bata sakta hoon. Ye doctor ki diagnosis ka replacement nahi hai.,hi,"[""select_report"", ""clinical_context""]",
+Patient says: Report mein kya likha hai,report_summary,Main report mein diye gaye values ko simple language mein summarize kar sakta hoon aur doctor se discuss karne layak points bata sakta hoon. Ye doctor ki diagnosis ka replacement nahi hai.,hi,"[""select_report"", ""clinical_context""]",
+Patient says: Meri report ka summary do,report_summary,Main report mein diye gaye values ko simple language mein summarize kar sakta hoon aur doctor se discuss karne layak points bata sakta hoon. Ye doctor ki diagnosis ka replacement nahi hai.,hi,"[""select_report"", ""clinical_context""]",
+Patient says: Show my medical history,medical_history,Sure. I can show the information stored in your MediKiosk medical record.,en,,show_medical_history
+Patient says: What is in my medical record?,medical_history,Sure. I can show the information stored in your MediKiosk medical record.,en,,show_medical_history
+Patient says: Open my history,medical_history,Sure. I can show the information stored in your MediKiosk medical record.,en,,show_medical_history
+Patient says: meri medical history dikhao,medical_history,Bilkul. Main aapke MediKiosk medical record mein stored information dikha sakta hoon.,hinglish,,show_medical_history
+Patient says: mera medical record kholo,medical_history,Bilkul. Main aapke MediKiosk medical record mein stored information dikha sakta hoon.,hinglish,,show_medical_history
+Patient says: meri purani history kya hai,medical_history,Bilkul. Main aapke MediKiosk medical record mein stored information dikha sakta hoon.,hinglish,,show_medical_history
+Patient says: What medicines am I taking?,medication_history,I can check the medications recorded in your MediKiosk history. The record may not include medicines prescribed outside the system.,en,,retrieve_medications
+Patient says: Show my current medicines,medication_history,I can check the medications recorded in your MediKiosk history. The record may not include medicines prescribed outside the system.,en,,retrieve_medications
+Patient says: Which medications are in my record?,medication_history,I can check the medications recorded in your MediKiosk history. The record may not include medicines prescribed outside the system.,en,,retrieve_medications
+Patient says: Meri medicines kya hain?,medication_history,Main MediKiosk mein recorded medicines check kar sakta hoon. Bahar prescribe ki gayi medicines record mein zaroori nahi ki available hon.,hi,,retrieve_medications
+Patient says: Kaunsi dawa chal rahi hai?,medication_history,Main MediKiosk mein recorded medicines check kar sakta hoon. Bahar prescribe ki gayi medicines record mein zaroori nahi ki available hon.,hi,,retrieve_medications
+Patient says: Meri current medicines dikhao,medication_history,Main MediKiosk mein recorded medicines check kar sakta hoon. Bahar prescribe ki gayi medicines record mein zaroori nahi ki available hon.,hi,,retrieve_medications
+Patient says: I want to see a doctor,doctor_appointment,Sure. I can help you start an appointment request. Which department or type of doctor do you need?,en,"[""department"", ""preferred_date"", ""preferred_time""]",
+Patient says: Book a doctor appointment,doctor_appointment,Sure. I can help you start an appointment request. Which department or type of doctor do you need?,en,"[""department"", ""preferred_date"", ""preferred_time""]",
+Patient says: I need an appointment,doctor_appointment,Sure. I can help you start an appointment request. Which department or type of doctor do you need?,en,"[""department"", ""preferred_date"", ""preferred_time""]",
+Patient says: Mujhe doctor se milna hai,doctor_appointment,Bilkul. Main appointment request start karne mein help karunga. Aapko kis department ya kis type ke doctor ki zarurat hai?,hi,"[""department"", ""preferred_date"", ""preferred_time""]",
+Patient says: Doctor ki appointment book karni hai,doctor_appointment,Bilkul. Main appointment request start karne mein help karunga. Aapko kis department ya kis type ke doctor ki zarurat hai?,hi,"[""department"", ""preferred_date"", ""preferred_time""]",
+Patient says: Mujhe appointment chahiye,doctor_appointment,Bilkul. Main appointment request start karne mein help karunga. Aapko kis department ya kis type ke doctor ki zarurat hai?,hi,"[""department"", ""preferred_date"", ""preferred_time""]",
+Patient says: Which doctor should I see for a skin problem?,department_guidance,I can help identify the relevant department based on the information you provide. A clinician should make the final diagnosis and treatment decision.,en,"[""symptom_details""]",
+"Patient says: I have a dental problem, which department?",department_guidance,I can help identify the relevant department based on the information you provide. A clinician should make the final diagnosis and treatment decision.,en,"[""symptom_details""]",
+Patient says: Where should I go for stomach issues?,department_guidance,I can help identify the relevant department based on the information you provide. A clinician should make the final diagnosis and treatment decision.,en,"[""symptom_details""]",
+Patient says: Skin problem ke liye kis doctor ke paas jaun?,department_guidance,Aapke symptoms ke basis par main relevant department identify karne mein help kar sakta hoon. Final diagnosis aur treatment decision clinician karega.,hi,"[""symptom_details""]",
+Patient says: Daant ke liye kaunsa department hai?,department_guidance,Aapke symptoms ke basis par main relevant department identify karne mein help kar sakta hoon. Final diagnosis aur treatment decision clinician karega.,hi,"[""symptom_details""]",
+Patient says: Pet ki problem ke liye kahan jaun?,department_guidance,Aapke symptoms ke basis par main relevant department identify karne mein help kar sakta hoon. Final diagnosis aur treatment decision clinician karega.,hi,"[""symptom_details""]",
+Patient says: What is my ABHA number?,medical_id,I can help you access or verify the medical ID information stored in your profile. I'll first ask you to confirm the required identity details.,en,,verify_identity
+Patient says: Show my medical ID,medical_id,I can help you access or verify the medical ID information stored in your profile. I'll first ask you to confirm the required identity details.,en,,verify_identity
+Patient says: I want to verify my ABHA,medical_id,I can help you access or verify the medical ID information stored in your profile. I'll first ask you to confirm the required identity details.,en,,verify_identity
+Patient says: Mera ABHA number kya hai?,medical_id,Main aapki profile mein stored medical ID information access ya verify karne mein help kar sakta hoon. Pehle required identity details confirm karni hongi.,hi,,verify_identity
+Patient says: Meri medical ID dikhao,medical_id,Main aapki profile mein stored medical ID information access ya verify karne mein help kar sakta hoon. Pehle required identity details confirm karni hongi.,hi,,verify_identity
+Patient says: ABHA verify karna hai,medical_id,Main aapki profile mein stored medical ID information access ya verify karne mein help kar sakta hoon. Pehle required identity details confirm karni hongi.,hi,,verify_identity
+Patient says: Change my phone number,profile_update,Sure. I can start a profile update. I'll ask you to verify your identity before changing personal information.,en,,verify_identity
+Patient says: Update my address,profile_update,Sure. I can start a profile update. I'll ask you to verify your identity before changing personal information.,en,,verify_identity
+Patient says: I need to edit my profile,profile_update,Sure. I can start a profile update. I'll ask you to verify your identity before changing personal information.,en,,verify_identity
+Patient says: Mera phone number change karo,profile_update,Bilkul. Personal information change karne se pehle main aapki identity verify karunga.,hi,,verify_identity
+Patient says: Profile update karni hai,profile_update,Bilkul. Personal information change karne se pehle main aapki identity verify karunga.,hi,,verify_identity
+Patient says: Meri details edit karni hain,profile_update,Bilkul. Personal information change karne se pehle main aapki identity verify karunga.,hi,,verify_identity
+Patient says: What am I consenting to?,consent,"Before processing health information, MediKiosk should clearly explain what information will be collected, why it is needed, and how it will be used. You should be able to make an informed choice.",en,,show_consent
+Patient says: Explain the consent,consent,"Before processing health information, MediKiosk should clearly explain what information will be collected, why it is needed, and how it will be used. You should be able to make an informed choice.",en,,show_consent
+Patient says: Do I have to give consent?,consent,"Before processing health information, MediKiosk should clearly explain what information will be collected, why it is needed, and how it will be used. You should be able to make an informed choice.",en,,show_consent
+Patient says: Consent kya hai?,consent,"Consent ka matlab hai ki aapko clearly bataya jaye ki kaunsi health information collect hogi, kyun chahiye aur kaise use hogi. Informed choice ke baad hi aage badhna chahiye.",hi,,show_consent
+Patient says: Mujhe consent samjhao,consent,"Consent ka matlab hai ki aapko clearly bataya jaye ki kaunsi health information collect hogi, kyun chahiye aur kaise use hogi. Informed choice ke baad hi aage badhna chahiye.",hi,,show_consent
+Patient says: Meri information kaise use hogi?,consent,"Consent ka matlab hai ki aapko clearly bataya jaye ki kaunsi health information collect hogi, kyun chahiye aur kaise use hogi. Informed choice ke baad hi aage badhna chahiye.",hi,,show_consent
+Patient says: Repeat that,repeat,Of course. I'll repeat that more slowly and simply.,en,,repeat_last_response
+Patient says: Say that again,repeat,Of course. I'll repeat that more slowly and simply.,en,,repeat_last_response
+Patient says: I didn't understand,repeat,Of course. I'll repeat that more slowly and simply.,en,,repeat_last_response
+Patient says: Phir se batao,repeat,Bilkul. Main ise dobara aur simple language mein bata deta hoon.,hi,,repeat_last_response
+Patient says: Dobara bolo,repeat,Bilkul. Main ise dobara aur simple language mein bata deta hoon.,hi,,repeat_last_response
+Patient says: Mujhe samajh nahi aaya,repeat,Bilkul. Main ise dobara aur simple language mein bata deta hoon.,hi,,repeat_last_response
+Patient says: Stop,stop,Okay. I'll stop the current flow. You can start again whenever you're ready.,en,,cancel_current_flow
+Patient says: Cancel this,stop,Okay. I'll stop the current flow. You can start again whenever you're ready.,en,,cancel_current_flow
+Patient says: I don't want to continue,stop,Okay. I'll stop the current flow. You can start again whenever you're ready.,en,,cancel_current_flow
+Patient says: Ruko,stop,Theek hai. Main current process rok raha hoon. Jab ready hon tab dobara start kar sakte hain.,hi,,cancel_current_flow
+Patient says: Cancel karo,stop,Theek hai. Main current process rok raha hoon. Jab ready hon tab dobara start kar sakte hain.,hi,,cancel_current_flow
+Patient says: Mujhe continue nahi karna,stop,Theek hai. Main current process rok raha hoon. Jab ready hon tab dobara start kar sakte hain.,hi,,cancel_current_flow
+Patient says: Do you have any known allergies?,history_question,Thanks. I've recorded your answer and will continue with the relevant history.,en,"[""allergies""]",
+Patient says: Kya aapko kisi medicine ya food se allergy hai?,history_question,Dhanyavaad. Maine aapka answer note kar liya hai aur relevant history continue karunga.,hi,"[""allergies""]",
+Patient says: Do you have any existing medical conditions?,history_question,Thanks. I've recorded your answer and will continue with the relevant history.,en,"[""past_conditions""]",
+Patient says: Kya aapko pehle se koi medical condition hai?,history_question,Dhanyavaad. Maine aapka answer note kar liya hai aur relevant history continue karunga.,hi,"[""past_conditions""]",
+Patient says: Have you had any major surgeries?,history_question,Thanks. I've recorded your answer and will continue with the relevant history.,en,"[""past_surgery""]",
+Patient says: Kya pehle koi major surgery hui hai?,history_question,Dhanyavaad. Maine aapka answer note kar liya hai aur relevant history continue karunga.,hi,"[""past_surgery""]",
+Patient says: Is there any important medical history in your family?,history_question,Thanks. I've recorded your answer and will continue with the relevant history.,en,"[""family_history""]",
+Patient says: Kya family mein koi important medical history hai?,history_question,Dhanyavaad. Maine aapka answer note kar liya hai aur relevant history continue karunga.,hi,"[""family_history""]",
+Patient says: Do you currently smoke or use tobacco?,history_question,Thanks. I've recorded your answer and will continue with the relevant history.,en,"[""smoking""]",
+Patient says: Kya aap smoking ya tobacco use karte hain?,history_question,Dhanyavaad. Maine aapka answer note kar liya hai aur relevant history continue karunga.,hi,"[""smoking""]",
+Patient says: Do you drink alcohol?,history_question,Thanks. I've recorded your answer and will continue with the relevant history.,en,"[""alcohol""]",
+Patient says: Kya aap alcohol consume karte hain?,history_question,Dhanyavaad. Maine aapka answer note kar liya hai aur relevant history continue karunga.,hi,"[""alcohol""]",
+Patient says: I don't know,fallback,"That's okay. Please describe what you need help with in your own words, and I'll guide you step by step.",en,"[""user_goal""]",
+Patient says: I'm not sure,fallback,"That's okay. Please describe what you need help with in your own words, and I'll guide you step by step.",en,"[""user_goal""]",
+Patient says: Can you help me?,fallback,"That's okay. Please describe what you need help with in your own words, and I'll guide you step by step.",en,"[""user_goal""]",
+Patient says: Something is wrong,fallback,"That's okay. Please describe what you need help with in your own words, and I'll guide you step by step.",en,"[""user_goal""]",
+Patient says: Mujhe nahi pata,fallback,"Koi baat nahi. Apni problem apne words mein bataiye, main step by step guide karunga.",hi,"[""user_goal""]",
+Patient says: Samajh nahi aa raha,fallback,"Koi baat nahi. Apni problem apne words mein bataiye, main step by step guide karunga.",hi,"[""user_goal""]",
+Patient says: Aap help kar sakte ho?,fallback,"Koi baat nahi. Apni problem apne words mein bataiye, main step by step guide karunga.",hi,"[""user_goal""]",
+Patient says: Kuch problem hai,fallback,"Koi baat nahi. Apni problem apne words mein bataiye, main step by step guide karunga.",hi,"[""user_goal""]",
+Patient says: aaj se body off lag rahi hai,symptom_reporting,"I understand. I'll record that symptom. When did it start, and how severe is it from 0 to 10?",hinglish,"[""onset"", ""severity"", ""associated_symptoms""]",
+Patient says: tabiyat subah se kharab hai,symptom_reporting,"I understand. I'll record that symptom. When did it start, and how severe is it from 0 to 10?",hinglish,"[""onset"", ""severity"", ""associated_symptoms""]",
+Patient says: mujhe ye problem aaj start hui,symptom_reporting,"I understand. I'll record that symptom. When did it start, and how severe is it from 0 to 10?",hinglish,"[""onset"", ""severity"", ""associated_symptoms""]",
+Patient says: kuch ajeeb sa feel ho raha hai,symptom_reporting,"I understand. I'll record that symptom. When did it start, and how severe is it from 0 to 10?",hinglish,"[""onset"", ""severity"", ""associated_symptoms""]",
+Patient says: I don't feel well today,symptom_reporting,"I understand. I'll record that symptom. When did it start, and how severe is it from 0 to 10?",en,"[""onset"", ""severity"", ""associated_symptoms""]",
+Patient says: Something has been bothering me since morning,symptom_reporting,"I understand. I'll record that symptom. When did it start, and how severe is it from 0 to 10?",en,"[""onset"", ""severity"", ""associated_symptoms""]",
+Patient says: I have been feeling unwell,symptom_reporting,"I understand. I'll record that symptom. When did it start, and how severe is it from 0 to 10?",en,"[""onset"", ""severity"", ""associated_symptoms""]",
+Patient says: I have a new symptom,symptom_reporting,"I understand. I'll record that symptom. When did it start, and how severe is it from 0 to 10?",en,"[""onset"", ""severity"", ""associated_symptoms""]",
+Patient says: is document ko record mein daal do,report_upload,Sure. Please upload a clear photo or PDF of the report. I can help extract and organize the information for your medical record.,hinglish,,request_document
+Patient says: report ki photo leke upload karni hai,report_upload,Sure. Please upload a clear photo or PDF of the report. I can help extract and organize the information for your medical record.,hinglish,,request_document
+Patient says: meri prescription scan karni hai,report_upload,Sure. Please upload a clear photo or PDF of the report. I can help extract and organize the information for your medical record.,hinglish,,request_document
+Patient says: Please add this document to my record,report_upload,Sure. Please upload a clear photo or PDF of the report. I can help extract and organize the information for your medical record.,en,,request_document
+Patient says: I want to scan my prescription,report_upload,Sure. Please upload a clear photo or PDF of the report. I can help extract and organize the information for your medical record.,en,,request_document
+Patient says: Can I add a photo of this prescription?,report_upload,Sure. Please upload a clear photo or PDF of the report. I can help extract and organize the information for your medical record.,en,,request_document
+Patient says: doctor ka slot chahiye,doctor_appointment,Sure. I can help you start an appointment request. Which department or type of doctor do you need?,hinglish,"[""department"", ""preferred_date"", ""preferred_time""]",
+Patient says: clinic mein consultation chahiye,doctor_appointment,Sure. I can help you start an appointment request. Which department or type of doctor do you need?,hinglish,"[""department"", ""preferred_date"", ""preferred_time""]",
+Patient says: doctor se consult karna hai,doctor_appointment,Sure. I can help you start an appointment request. Which department or type of doctor do you need?,hinglish,"[""department"", ""preferred_date"", ""preferred_time""]",
+Patient says: I need a consultation,doctor_appointment,Sure. I can help you start an appointment request. Which department or type of doctor do you need?,en,"[""department"", ""preferred_date"", ""preferred_time""]",
+Patient says: Find me a doctor appointment,doctor_appointment,Sure. I can help you start an appointment request. Which department or type of doctor do you need?,en,"[""department"", ""preferred_date"", ""preferred_time""]",
+Patient says: Can I schedule a clinic visit?,doctor_appointment,Sure. I can help you start an appointment request. Which department or type of doctor do you need?,en,"[""department"", ""preferred_date"", ""preferred_time""]",

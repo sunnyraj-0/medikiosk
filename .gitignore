@@ -15,3 +15,10 @@ dist/
 
 # Logs
 *.log
+
+# Voice server — secrets & environment
+server/.env
+server/venv/
+server/__pycache__/
+.vercel
+.env*
