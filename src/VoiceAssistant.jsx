@@ -18,6 +18,18 @@ const LANGS = {
   'اردو': 'ur-IN'
 };
 
+// Locale codes used for the TTS path only (speech recognition keeps LANGS above).
+// English maps to the plain 'en' BCP-47 base tag; everything else to its full locale.
+const TTS_LANGS = {
+  'English': 'en',
+  'हिंदी': 'hi-IN',
+  'ಕನ್ನಡ': 'kn-IN',
+  'தமிழ்': 'ta-IN',
+  'मराठी': 'mr-IN',
+  'বাংলা': 'bn-IN',
+  'اردو': 'ur-IN',
+};
+
 const LANG_GENDER = {
   'हिंदी': 'feminine', 'English': 'feminine', 'ಕನ್ನಡ': 'feminine',
   'தமிழ்': 'feminine', 'मराठी': 'feminine', 'বাংলা': 'feminine', 'اردو': 'feminine'
@@ -54,10 +66,10 @@ async function backendChat(text) {
 async function backendVoice(blob) {
   const fd = new FormData();
   fd.append('audio', blob, 'speech.webm');
-  const res = await fetch(`${API_BASE}/voice/${sessionId()}`, { method: 'POST', body: fd });
+  const res = await fetch(`${API_BASE}/voice/${sessionId()}?transcribe_only=true`, { method: 'POST', body: fd });
   if (!res.ok) throw new Error(`backend ${res.status}`);
   const data = await res.json();
-  return { transcript: (data.transcript || '').trim(), response: data.response || '' };
+  return { transcript: (data.transcript || '').trim() };
 }
 
 // ---------- small text helpers ----------
@@ -72,6 +84,13 @@ const matches = (t, kws) =>
   });
 
 const MAX_RECORD_SECONDS = 20; // hard cap for one spoken turn
+const VOICE_STATE = {
+  IDLE: 'IDLE',
+  LISTENING: 'LISTENING',
+  PROCESSING: 'PROCESSING',
+  SPEAKING: 'SPEAKING',
+  ERROR: 'ERROR',
+};
 
 const CLEAR = { followUp: null, assessIndex: null, assessAnswers: [] };
 
@@ -395,6 +414,8 @@ export default function VoiceAssistant({ selectedLanguage = 'English', questions
   const [assessProgress, setAssessProgress] = useState(null);
   const [aiReady, setAiReady] = useState(false);
   const [aiBusy, setAiBusy] = useState(false);
+  const [voiceState, setVoiceState] = useState(VOICE_STATE.IDLE);
+  const [voiceError, setVoiceError] = useState('');
   const [level, setLevel] = useState(0);
   const [recSeconds, setRecSeconds] = useState(0);
   const [theme, setTheme] = useState(() => localStorage.getItem('mk_theme') || 'light');
@@ -408,7 +429,10 @@ export default function VoiceAssistant({ selectedLanguage = 'English', questions
     setTheme((th) => (th === 'dark' ? 'light' : 'dark'));
   };
   const [supported] = useState(
-    typeof window !== 'undefined' && !!(window.SpeechRecognition || window.webkitSpeechRecognition)
+    typeof window !== 'undefined' && (
+      !!(window.SpeechRecognition || window.webkitSpeechRecognition) ||
+      !!(navigator.mediaDevices && window.MediaRecorder)
+    )
   );
   // Electron (e.g. the Freebuff preview) bundles no Google speech API keys, so cloud
   // recognition always fails with 'network' there — surface that instead of confusing errors.
@@ -426,10 +450,17 @@ export default function VoiceAssistant({ selectedLanguage = 'English', questions
   const recordStartRef = useRef(0);
   const speechStartRef = useRef(null);
   const audioElRef = useRef(null);
+  const speakTokenRef = useRef(0);
   const emergencyEscalatedRef = useRef(false);
 
   const isHi = lang === 'हिंदी';
   const pick = (entry) => (isHi && entry.hi ? entry.hi : entry.en);
+
+  // Switching language mid-session immediately interrupts speech in the old language,
+  // so the next utterance is spoken with the newly selected locale.
+  useEffect(() => {
+    stopSpeaking();
+  }, [lang]);
 
   useEffect(() => {
     const el = chatRef.current;
@@ -453,18 +484,9 @@ export default function VoiceAssistant({ selectedLanguage = 'English', questions
     return () => { alive = false; };
   }, []);
 
-  // Pre-warm the mic (permission + hardware) so "Tap & Speak" starts instantly
+  // Warm the browser TTS voice list without requesting microphone permission early.
   useEffect(() => {
-    const w = window;
-    if (navigator.mediaDevices && typeof w.MediaRecorder !== 'undefined') {
-      navigator.mediaDevices
-        .getUserMedia({ audio: true })
-        .then((s) => {
-          prewarmedRef.current = s;
-        })
-        .catch(() => {});
-    }
-    if ('speechSynthesis' in window) window.speechSynthesis.getVoices(); // warm the voice list
+    if ('speechSynthesis' in window) window.speechSynthesis.getVoices();
   }, []);
 
   useEffect(
@@ -484,75 +506,143 @@ export default function VoiceAssistant({ selectedLanguage = 'English', questions
 
   const pushAssistant = (text) => setMessages((m) => [...m, { role: 'assistant', text }]);
 
-  // ---------- speaking: Gemini TTS first, best browser voice as fallback ----------
+  const setVoiceFailure = (message) => {
+    setVoiceError(message);
+    setVoiceState(VOICE_STATE.ERROR);
+    pushAssistant(message);
+    window.setTimeout(() => {
+      setVoiceState((state) => (state === VOICE_STATE.ERROR ? VOICE_STATE.IDLE : state));
+    }, 2600);
+  };
+
+  // ---------- speaking: server TTS first, browser SpeechSynthesis fallback ----------
   const stopSpeaking = () => {
+    speakTokenRef.current += 1; // invalidates any in-flight server TTS request
     if (audioElRef.current) {
       try { audioElRef.current.pause(); } catch (e) {}
       audioElRef.current = null;
     }
     if ('speechSynthesis' in window) window.speechSynthesis.cancel();
     setIsSpeaking(false);
+    setVoiceState(VOICE_STATE.IDLE);
   };
 
-  const speakWithBrowser = (text) => {
-    if (!('speechSynthesis' in window)) return;
-    window.speechSynthesis.cancel();
-    const u = new SpeechSynthesisUtterance(text);
-    const want = LANGS[lang] || 'en-IN';
-    u.lang = want;
-    u.rate = 0.95; // slightly slower reads clearer for patients
-    u.pitch = 1;
-    const base = want.split('-')[0].toLowerCase();
-    const score = (v) => {
-      const vl = v.lang.replace('_', '-').toLowerCase();
-      if (!vl.startsWith(base)) return -1;
-      let s = 0;
-      if (vl === want.toLowerCase()) s += 4;
-      if (/google/i.test(v.name)) s += 3;
-      if (/natural|online|premium|enhanced/i.test(v.name)) s += 3;
-      if (!v.localService) s += 1;
-      return s;
-    };
-    const best = window.speechSynthesis
-      .getVoices()
-      .map((v) => [score(v), v])
-      .filter(([s]) => s >= 0)
-      .sort((a, b) => b[0] - a[0])[0];
-    if (best) u.voice = best[1];
-    u.onstart = () => setIsSpeaking(true);
-    u.onend = () => setIsSpeaking(false);
-    u.onerror = () => setIsSpeaking(false);
-    window.speechSynthesis.speak(u);
+  // Enumerate available voices and pick one for the requested locale:
+  // exact locale match (e.g. kn-IN) > base-language match (any kn-*) > none.
+  // Never silently forces en-US for a non-English request; when nothing matches we keep
+  // utterance.lang at the requested locale and let the engine pick its best voice.
+  const pickBrowserVoice = (requested) => {
+    if (!('speechSynthesis' in window)) return null;
+    const want = (requested || '').replace('_', '-').toLowerCase();
+    const base = want.split('-')[0];
+    const voices = window.speechSynthesis.getVoices() || [];
+    const norm = (v) => (v.lang || '').replace('_', '-').toLowerCase();
+    const rank = (v) =>
+      (/google/i.test(v.name) ? 3 : 0) +
+      (/natural|online|premium|enhanced/i.test(v.name) ? 2 : 0) +
+      (!v.localService ? 1 : 0);
+    const bestOf = (list) => list.slice().sort((a, b) => rank(b) - rank(a))[0] || null;
+    const exact = bestOf(voices.filter((v) => norm(v) === want));
+    if (exact) {
+      console.log(`[TTS] selected voice= SpeechSynthesis "${exact.name}" (${exact.lang}) for ${requested}`);
+      return exact;
+    }
+    const sameBase = bestOf(voices.filter((v) => norm(v).split('-')[0] === base));
+    if (sameBase) {
+      console.log(`[TTS] selected voice= SpeechSynthesis "${sameBase.name}" (${sameBase.lang}) for ${requested} (base-language match)`);
+      return sameBase;
+    }
+    console.warn(`[TTS] fallback=no SpeechSynthesis voice matches ${requested}; keeping utterance.lang=${requested} with engine default voice`);
+    return null;
   };
 
-  const speak = async (text) => {
-    if (muted) return;
-    stopSpeaking();
-    setIsSpeaking(true);
-    if (!serverTts) {
-      speakWithBrowser(text);
+  const speakWithBrowser = (text, voiceLang) => {
+    if (!('speechSynthesis' in window)) {
+      console.warn('[TTS] fallback=browser SpeechSynthesis unavailable');
+      setVoiceState(VOICE_STATE.IDLE);
       return;
     }
-    try {
-      const res = await fetch(`${API_BASE}/tts?text=${encodeURIComponent(text)}`, { method: 'POST' });
-      if (!res.ok || res.status === 204) {
-        speakWithBrowser(text);
-        return;
-      }
-      const blob = await res.blob();
-      if (!blob || blob.size === 0) {
-        speakWithBrowser(text);
-        return;
-      }
-      const url = URL.createObjectURL(blob);
-      const audio = new Audio(url);
-      audioElRef.current = audio;
-      audio.onended = () => { URL.revokeObjectURL(url); setIsSpeaking(false); };
-      audio.onerror = () => { URL.revokeObjectURL(url); speakWithBrowser(text); };
-      await audio.play();
-    } catch (e) {
-      speakWithBrowser(text);
+    const spokenText = sanitizeReply(text);
+    if (!spokenText) {
+      setVoiceState(VOICE_STATE.IDLE);
+      return;
     }
+    console.log(`[TTS] fallback=browser SpeechSynthesis (lang=${voiceLang})`);
+    window.speechSynthesis.cancel();
+    const utterance = new SpeechSynthesisUtterance(spokenText);
+    utterance.lang = voiceLang;
+    utterance.rate = 0.95;
+    utterance.pitch = 1;
+    const voice = pickBrowserVoice(voiceLang);
+    if (voice) utterance.voice = voice;
+    utterance.onstart = () => {
+      setIsSpeaking(true);
+      setVoiceState(VOICE_STATE.SPEAKING);
+    };
+    utterance.onend = () => {
+      setIsSpeaking(false);
+      setVoiceState(VOICE_STATE.IDLE);
+    };
+    utterance.onerror = () => {
+      setIsSpeaking(false);
+      setVoiceState(VOICE_STATE.IDLE);
+    };
+    window.speechSynthesis.speak(utterance);
+  };
+
+  // Try server (Gemini) TTS in the selected language; on 204 / failure speak the SAME
+  // translated text via browser SpeechSynthesis — the text is never re-translated.
+  const speak = async (text) => {
+    if (muted) {
+      setVoiceState(VOICE_STATE.IDLE);
+      return;
+    }
+    stopSpeaking();
+    const token = speakTokenRef.current;
+    const ttsLang = TTS_LANGS[lang] || 'en';
+    console.log(`[TTS] language=${ttsLang}`);
+    console.log(`[TTS] text=${sanitizeReply(text)}`);
+    try {
+      const res = await fetch(
+        `${API_BASE}/tts?text=${encodeURIComponent(text)}&language=${encodeURIComponent(ttsLang)}`,
+        { method: 'POST' }
+      );
+      if (token !== speakTokenRef.current) return; // interrupted while fetching
+      if (res.ok) {
+        const blob = await res.blob();
+        console.log(`[TTS] selected voice= Gemini TTS server voice (${ttsLang})`);
+        const audio = new Audio(URL.createObjectURL(blob));
+        audioElRef.current = audio;
+        audio.onplay = () => {
+          setIsSpeaking(true);
+          setVoiceState(VOICE_STATE.SPEAKING);
+        };
+        audio.onended = () => {
+          if (audioElRef.current === audio) audioElRef.current = null;
+          URL.revokeObjectURL(audio.src);
+          setIsSpeaking(false);
+          setVoiceState(VOICE_STATE.IDLE);
+        };
+        audio.onerror = () => {
+          if (audioElRef.current === audio) audioElRef.current = null;
+          URL.revokeObjectURL(audio.src);
+          console.warn('[TTS] fallback=server audio failed to play -> browser SpeechSynthesis');
+          speakWithBrowser(text, ttsLang);
+        };
+        try {
+          await audio.play();
+          return;
+        } catch (e) {
+          console.warn('[TTS] fallback=server audio playback blocked -> browser SpeechSynthesis');
+        }
+      } else {
+        console.log(`[TTS] fallback=server TTS unavailable (HTTP ${res.status}) -> browser SpeechSynthesis`);
+      }
+    } catch (e) {
+      console.log('[TTS] fallback=server TTS unreachable -> browser SpeechSynthesis');
+    }
+    if (token !== speakTokenRef.current) return; // interrupted while fetching
+    speakWithBrowser(text, ttsLang);
   };
 
   // Keep chat replies clean and readable without truncating full sentences
@@ -569,8 +659,12 @@ export default function VoiceAssistant({ selectedLanguage = 'English', questions
 
   const handleUserMessage = async (text) => {
     const clean = (text || '').trim();
-    if (!clean || aiBusy) return;
-    setMessages((m) => [...m, { role: 'user', text: clean }]);
+    if (!clean || aiBusy) {
+      if (!clean) setVoiceState(VOICE_STATE.IDLE);
+      return;
+    }
+    setMessages((messages) => [...messages, { role: 'user', text: clean }]);
+    setVoiceState(VOICE_STATE.PROCESSING);
     setAiBusy(true);
     if (emergencyEscalatedRef.current && POST_RED_FLAG_FOLLOWUP_RE.test(clean)) {
       const reply = sanitizeReply(POST_RED_FLAG_RESPONSE);
@@ -614,156 +708,163 @@ export default function VoiceAssistant({ selectedLanguage = 'English', questions
   };
 
   const startListening = () => {
-    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-    const canRecord = typeof navigator !== 'undefined' && navigator.mediaDevices && typeof MediaRecorder !== 'undefined';
+    if (aiBusy) return;
+    stopSpeaking();
+    setVoiceError('');
 
-    // Gemini voice path: record audio, let the backend transcribe + answer.
-    // Smart listening: auto-stops shortly after the user stops talking,
-    // shows a live mic level meter, hard-caps length, and supports barge-in.
-    if ((!SR || aiReady) && canRecord) {
-      stopSpeaking(); // barge-in: talking to the mic always interrupts the assistant
-      const begin = (stream) => {
-        streamRef.current = stream;
-        const mime = MediaRecorder.isTypeSupported('audio/webm;codecs=opus') ? 'audio/webm;codecs=opus' : undefined;
-        const recorder = new MediaRecorder(stream, mime ? { mimeType: mime } : undefined);
-        const chunks = [];
-        recRef.current = recorder;
-        speechStartRef.current = null;
-        recordStartRef.current = Date.now();
-        setRecSeconds(0);
-        timerRef.current = setInterval(() => setRecSeconds(Math.round((Date.now() - recordStartRef.current) / 1000)), 500);
-
-        const finish = () => {
-          if (recorder.state !== 'inactive') recorder.stop();
-        };
-
-        recorder.ondataavailable = (e) => e.data.size > 0 && chunks.push(e.data);
-        recorder.onstop = async () => {
-          if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
-          if (rafRef.current) { cancelAnimationFrame(rafRef.current); rafRef.current = null; }
-          if (audioCtxRef.current) { try { audioCtxRef.current.close(); } catch (e) {} audioCtxRef.current = null; }
-          stream.getTracks().forEach((t) => t.stop());
-          streamRef.current = null;
-          setIsListening(false);
-          setLevel(0);
-          const blob = new Blob(chunks, { type: recorder.mimeType || 'audio/webm' });
-          if (blob.size < 2000) {
-            pushAssistant("I didn't catch that — tap the mic and try again, or type below.");
-            return;
-          }
-          setAiBusy(true);
-          try {
-            const { transcript, response } = await backendVoice(blob);
-            setAiBusy(false);
-            if (!transcript) {
-              pushAssistant("I didn't catch that — tap the mic and try again, or type below.");
-              return;
-            }
-            setMessages((m) => [...m, { role: 'user', text: transcript }]);
-            setMessages((m) => [...m, { role: 'assistant', text: response }]);
-            speak(response);
-          } catch (err) {
-            setAiBusy(false);
-            if (SR) { startWebSpeech(SR); } else {
-              pushAssistant('The AI voice service is unreachable right now — please type your question below.');
-            }
-          }
-        };
-
-        // Live mic level + silence auto-stop
-        try {
-          const Ctx = window.AudioContext || window.webkitAudioContext;
-          const ctx = new Ctx();
-          audioCtxRef.current = ctx;
-          const src = ctx.createMediaStreamSource(stream);
-          const analyser = ctx.createAnalyser();
-          analyser.fftSize = 512;
-          src.connect(analyser);
-          analyserRef.current = analyser;
-          const buf = new Uint8Array(analyser.frequencyBinCount);
-          let spoke = false;
-          let lastVoiceAt = Date.now();
-          const tick = () => {
-            analyser.getByteTimeDomainData(buf);
-            let sum = 0;
-            for (let i = 0; i < buf.length; i++) { const v = (buf[i] - 128) / 128; sum += v * v; }
-            const rms = Math.sqrt(sum / buf.length);
-            setLevel(Math.min(1, rms * 4));
-            if (rms > 0.09) { spoke = true; lastVoiceAt = Date.now(); if (speechStartRef.current === null) speechStartRef.current = Date.now(); }
-            const elapsed = Date.now() - recordStartRef.current;
-            if (elapsed > MAX_RECORD_SECONDS * 1000) { finish(); return; }
-            if (spoke && Date.now() - lastVoiceAt > 1600) { finish(); return; } // user paused → send
-            rafRef.current = requestAnimationFrame(tick);
-          };
-          rafRef.current = requestAnimationFrame(tick);
-        } catch (e) { /* metering optional */ }
-
-        recorder.start();
-        setIsListening(true);
-      };
-
-      if (prewarmedRef.current) {
-        const s = prewarmedRef.current;
-        prewarmedRef.current = null;
-        begin(s);
-      } else {
-        navigator.mediaDevices
-          .getUserMedia({ audio: true })
-          .then(begin)
-          .catch(() => {
-            pushAssistant('Microphone access was denied. 🙅 Please allow the microphone, or type your question below.');
-          });
-      }
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (SpeechRecognition && !isElectron) {
+      startWebSpeech(SpeechRecognition, true);
       return;
     }
-
-    if (!SR) {
-      pushAssistant("Voice input isn't supported in this browser — please use the text box below. 😊");
-      return;
-    }
-    startWebSpeech(SR);
+    startRecorderTranscription();
   };
 
-  const startWebSpeech = (SR) => {
+  const startWebSpeech = (SpeechRecognition, allowRecorderFallback = false) => {
     try {
-      const rec = new SR();
-      recRef.current = rec;
-      rec.lang = LANGS[lang] || 'en-IN';
-      rec.interimResults = false;
-      rec.maxAlternatives = 1;
-      rec.onresult = (e) => {
-        handleUserMessage(e.results[0][0].transcript);
-      };
-      rec.onerror = (e) => {
+      const recognition = new SpeechRecognition();
+      recRef.current = recognition;
+      recognition.lang = LANGS[lang] || 'en-IN';
+      recognition.interimResults = false;
+      recognition.maxAlternatives = 1;
+      recognition.continuous = false;
+      recognition.onresult = (event) => {
+        const transcript = (event.results?.[0]?.[0]?.transcript || '').trim();
         setIsListening(false);
-        if (e.error === 'not-allowed') {
-          pushAssistant('Microphone access was denied. 🙅 Please allow the microphone, or type your question below.');
-        } else if (e.error === 'no-speech') {
-          pushAssistant("I didn't catch that — tap the mic and try again, or type below.");
-        } else if (e.error === 'network') {
-          pushAssistant(
-            isElectron
-              ? 'Voice recognition is blocked inside this preview window. ⚠️ Open the app in Google Chrome or on your phone for working voice input — or type below (I still answer and speak aloud).'
-              : "Speech recognition couldn't connect to the voice service — check your internet connection, or try Google Chrome. You can also type below."
-          );
+        setVoiceState(VOICE_STATE.PROCESSING);
+        if (transcript) handleUserMessage(transcript);
+        else setVoiceFailure("Couldn't hear that. Tap and try again.");
+      };
+      recognition.onerror = (event) => {
+        setIsListening(false);
+        setLevel(0);
+        if (event.error === 'not-allowed') {
+          setVoiceFailure('Microphone access is required for voice input. Please allow microphone access in your browser settings.');
+        } else if (event.error === 'no-speech') {
+          setVoiceFailure("Couldn't hear that. Tap and try again.");
+        } else if (allowRecorderFallback) {
+          startRecorderTranscription();
         } else {
-          pushAssistant(`Voice error (${e.error}) — you can also type your question below.`);
+          setVoiceFailure(`Voice error (${event.error}). You can still type below.`);
         }
       };
-      rec.onend = () => setIsListening(false);
-      rec.start();
+      recognition.onend = () => {
+        setIsListening(false);
+        setLevel(0);
+        setVoiceState((state) => (state === VOICE_STATE.LISTENING ? VOICE_STATE.IDLE : state));
+      };
+      recognition.start();
       setIsListening(true);
+      setVoiceState(VOICE_STATE.LISTENING);
     } catch (err) {
-      pushAssistant('Voice input failed to start — please use the text box below.');
+      if (allowRecorderFallback) startRecorderTranscription();
+      else setVoiceFailure('Voice input failed to start. Please use the text box below.');
     }
+  };
+
+  const startRecorderTranscription = () => {
+    const canRecord = typeof navigator !== 'undefined' && navigator.mediaDevices && typeof MediaRecorder !== 'undefined';
+    if (!canRecord) {
+      setVoiceFailure("Voice input isn't supported in this browser. Please use the text box below.");
+      return;
+    }
+
+    const begin = (stream) => {
+      streamRef.current = stream;
+      const mime = MediaRecorder.isTypeSupported('audio/webm;codecs=opus') ? 'audio/webm;codecs=opus' : undefined;
+      const recorder = new MediaRecorder(stream, mime ? { mimeType: mime } : undefined);
+      const chunks = [];
+      recRef.current = recorder;
+      speechStartRef.current = null;
+      recordStartRef.current = Date.now();
+      setRecSeconds(0);
+      setVoiceState(VOICE_STATE.LISTENING);
+      timerRef.current = setInterval(() => setRecSeconds(Math.round((Date.now() - recordStartRef.current) / 1000)), 500);
+
+      const finish = () => {
+        if (recorder.state !== 'inactive') recorder.stop();
+      };
+
+      recorder.ondataavailable = (event) => event.data.size > 0 && chunks.push(event.data);
+      recorder.onstop = async () => {
+        if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
+        if (rafRef.current) { cancelAnimationFrame(rafRef.current); rafRef.current = null; }
+        if (audioCtxRef.current) { try { audioCtxRef.current.close(); } catch (e) {} audioCtxRef.current = null; }
+        stream.getTracks().forEach((track) => track.stop());
+        streamRef.current = null;
+        setIsListening(false);
+        setLevel(0);
+
+        const blob = new Blob(chunks, { type: recorder.mimeType || 'audio/webm' });
+        if (blob.size < 2000) {
+          setVoiceFailure("Couldn't hear that. Tap and try again.");
+          return;
+        }
+
+        setVoiceState(VOICE_STATE.PROCESSING);
+        try {
+          const { transcript } = await backendVoice(blob);
+          if (!transcript) {
+            setVoiceFailure("Couldn't hear that. Tap and try again.");
+            return;
+          }
+          handleUserMessage(transcript);
+        } catch (err) {
+          setVoiceFailure('Voice transcription is unavailable right now. Please type your question below.');
+        }
+      };
+
+      try {
+        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+        const ctx = new AudioCtx();
+        audioCtxRef.current = ctx;
+        const source = ctx.createMediaStreamSource(stream);
+        const analyser = ctx.createAnalyser();
+        analyser.fftSize = 512;
+        source.connect(analyser);
+        analyserRef.current = analyser;
+        const buffer = new Uint8Array(analyser.frequencyBinCount);
+        let spoke = false;
+        let lastVoiceAt = Date.now();
+        const tick = () => {
+          analyser.getByteTimeDomainData(buffer);
+          let sum = 0;
+          for (let i = 0; i < buffer.length; i++) { const value = (buffer[i] - 128) / 128; sum += value * value; }
+          const rms = Math.sqrt(sum / buffer.length);
+          setLevel(Math.min(1, rms * 4));
+          if (rms > 0.09) { spoke = true; lastVoiceAt = Date.now(); if (speechStartRef.current === null) speechStartRef.current = Date.now(); }
+          const elapsed = Date.now() - recordStartRef.current;
+          if (elapsed > MAX_RECORD_SECONDS * 1000) { finish(); return; }
+          if (spoke && Date.now() - lastVoiceAt > 1600) { finish(); return; }
+          rafRef.current = requestAnimationFrame(tick);
+        };
+        rafRef.current = requestAnimationFrame(tick);
+      } catch (e) { /* metering optional */ }
+
+      recorder.start();
+      setIsListening(true);
+    };
+
+    navigator.mediaDevices
+      .getUserMedia({ audio: true })
+      .then(begin)
+      .catch(() => {
+        setIsListening(false);
+        setVoiceFailure('Microphone access is required for voice input. Please allow microphone access in your browser settings.');
+      });
   };
 
   const toggleListening = () => {
+    if (isSpeaking || voiceState === VOICE_STATE.SPEAKING) {
+      stopSpeaking();
+      return;
+    }
     if (isListening) {
-      const r = recRef.current;
-      if (r) { try { if (r.state === 'recording') r.stop(); else if (r.stop) r.stop(); } catch (e) {} }
+      const recorder = recRef.current;
+      if (recorder) { try { if (recorder.state === 'recording') recorder.stop(); else if (recorder.stop) recorder.stop(); } catch (e) {} }
       if (rafRef.current) { cancelAnimationFrame(rafRef.current); rafRef.current = null; }
       setIsListening(false);
+      setVoiceState(VOICE_STATE.PROCESSING);
       return;
     }
     startListening();
@@ -774,6 +875,20 @@ export default function VoiceAssistant({ selectedLanguage = 'English', questions
     handleUserMessage(input);
     setInput('');
   };
+
+  const voiceButtonText =
+    voiceState === VOICE_STATE.LISTENING ? '\u{1F534} Listening...' :
+    voiceState === VOICE_STATE.PROCESSING ? 'Thinking...' :
+    voiceState === VOICE_STATE.SPEAKING || isSpeaking ? '\u{1F50A} Stop' :
+    voiceState === VOICE_STATE.ERROR ? "Couldn't hear that. Tap and try again." :
+    '\u{1F3A4} Tap & Speak';
+
+  const voiceButtonClass =
+    voiceState === VOICE_STATE.LISTENING ? 'bg-red-600 hover:bg-red-700 animate-pulse' :
+    voiceState === VOICE_STATE.PROCESSING ? 'bg-gray-500' :
+    voiceState === VOICE_STATE.SPEAKING || isSpeaking ? 'bg-blue-600 hover:bg-blue-700' :
+    voiceState === VOICE_STATE.ERROR ? 'bg-amber-600 hover:bg-amber-700' :
+    'bg-green-700 hover:bg-green-800';
 
   return (
     <div className="min-h-screen bg-gray-100 flex items-center justify-center p-4 relative">

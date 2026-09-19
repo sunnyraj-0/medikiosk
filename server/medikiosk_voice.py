@@ -43,7 +43,7 @@ _tts_model_index = 0
 
 # Groq (primary conversational LLM + Whisper STT)
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
-GROQ_MODEL = os.getenv("GROQ_MODEL", "openai/gpt-oss-120b")
+GROQ_MODEL = os.getenv("GROQ_MODEL", "openai/gpt-oss-20b")
 groq_client = Groq(api_key=GROQ_API_KEY) if GROQ_API_KEY else None
 
 # ============================================================
@@ -396,12 +396,11 @@ async def chat(session_id: str, message: str):
 
 
 # ============================================================
-# SPEECH TO TEXT (Groq Whisper with Gemini Fallback)
+# SPEECH TO TEXT (Groq Whisper; no Gemini required for voice chat)
 # ============================================================
 
 async def transcribe_audio(audio_bytes: bytes, mime_type: str = "audio/webm", filename: str = "speech.webm") -> str:
-    """Transcribes patient speech using Groq's high-speed Whisper model,
-    falling back to Gemini if configured."""
+    """Transcribes patient speech using Groq's Whisper model."""
     if groq_client:
         try:
             transcription = groq_client.audio.transcriptions.create(
@@ -413,24 +412,11 @@ async def transcribe_audio(audio_bytes: bytes, mime_type: str = "audio/webm", fi
         except Exception as exc:
             print(f"Groq Whisper transcription error: {exc}")
 
-    if client:
-        try:
-            response = client.models.generate_content(
-                model=GEMINI_MODEL,
-                contents=[
-                    types.Part.from_bytes(data=audio_bytes, mime_type=mime_type),
-                    "Transcribe this patient speech accurately. Return ONLY the transcription."
-                ]
-            )
-            return (response.text or "").strip()
-        except Exception as exc:
-            print(f"Gemini STT fallback error: {exc}")
-
     return ""
 
 
 @app.post("/voice/{session_id}")
-async def voice_chat(session_id: str, audio: UploadFile = File(...)):
+async def voice_chat(session_id: str, audio: UploadFile = File(...), transcribe_only: bool = False):
     audio_bytes = await audio.read()
     mime = (audio.content_type or "audio/webm").split(";")[0].strip()
     if mime not in ("audio/webm", "audio/mp4", "audio/mpeg", "audio/wav", "audio/wave"):
@@ -444,6 +430,13 @@ async def voice_chat(session_id: str, audio: UploadFile = File(...)):
             "session_id": session_id,
             "transcript": "",
             "response": "I could not hear you clearly. Please tap the mic and try again, or type your question below."
+        }
+
+    if transcribe_only:
+        return {
+            "session_id": session_id,
+            "transcript": transcript,
+            "response": ""
         }
 
     ai_response = ask_groq(session_id, transcript)
@@ -471,17 +464,26 @@ def pcm_to_wav(pcm: bytes, sample_rate: int = 24000) -> bytes:
 
 
 @app.post("/tts")
-async def tts(text: str):
-    """Synthesizes speech via Gemini TTS if configured; otherwise returns 204 No Content
-    allowing the frontend to seamlessly use browser SpeechSynthesis without throwing 502."""
+async def tts(text: str, language: str = "en"):
+    """Synthesizes speech via Gemini TTS in the requested language (e.g. en, hi-IN, kn-IN,
+    ta-IN, mr-IN, bn-IN, ur-IN); otherwise returns 204 No Content allowing the frontend
+    to seamlessly fall back to browser SpeechSynthesis with the SAME text."""
     global _tts_model_index
+
+    print(f"[TTS] language={language}")
+    print(f"[TTS] text={text[:160]}")
 
     if not text.strip():
         raise HTTPException(status_code=400, detail="Empty text")
 
     if not client:
         # Server TTS not configured (GEMINI_API_KEY absent); return 204 No Content
+        print("[TTS] fallback=server TTS not configured (no GEMINI_API_KEY) -> browser SpeechSynthesis")
         return Response(status_code=204, headers={"X-TTS-Status": "BrowserFallback"})
+
+    # Gemini TTS voices are multilingual; anchor pronunciation/dialect by naming the
+    # language/locale explicitly instead of hard-coding English.
+    language_instruction = f"Read the following text aloud in {language}:\n\n{text}"
 
     last_error = None
     for attempt in range(len(TTS_MODELS)):
@@ -489,10 +491,11 @@ async def tts(text: str):
         try:
             response = client.models.generate_content(
                 model=model,
-                contents=text,
+                contents=language_instruction,
                 config=types.GenerateContentConfig(
                     response_modalities=["AUDIO"],
                     speech_config=types.SpeechConfig(
+                        language_code=language or None,
                         voice_config=types.VoiceConfig(
                             prebuilt_voice_config=types.PrebuiltVoiceConfig(
                                 voice_name=TTS_VOICE
@@ -501,7 +504,11 @@ async def tts(text: str):
                     ),
                 ),
             )
-            pcm = response.candidates[0].content.parts[0].inline_data.data
+            parts = response.candidates[0].content.parts
+            audio_part = next((p for p in parts if getattr(p, "inline_data", None) and p.inline_data.data), None)
+            if not audio_part:
+                raise RuntimeError("Gemini TTS returned no audio (voice/language likely unsupported)")
+            pcm = audio_part.inline_data.data
             _tts_model_index = (_tts_model_index + attempt) % len(TTS_MODELS)
             return Response(
                 content=pcm_to_wav(pcm),
@@ -510,7 +517,9 @@ async def tts(text: str):
             )
         except Exception as e:
             last_error = e
+            print(f"[TTS] Gemini model={model} failed: {e}")
 
+    print(f"[TTS] fallback=Gemini TTS failed for language={language} -> browser SpeechSynthesis ({last_error})")
     return Response(status_code=204, headers={"X-TTS-Status": "BrowserFallback"})
 
 
