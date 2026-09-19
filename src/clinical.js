@@ -4,19 +4,23 @@
 const ALERTS_KEY = 'mk_alerts';
 const TIMELINE_KEY = 'mk_timeline';
 
-// Red-flag symptom patterns (English + Hindi/Hinglish). Mirrors the emergency
-// intents of the trained dataset and the ABDM clinical-alert requirement.
+// Red-flag symptom patterns (English + Hindi/Hinglish). Severity alone is not
+// a red flag; the patterns look for emergency features around the symptom.
 const RED_FLAG_PATTERNS = [
-  { label: 'Severe chest pain', re: /(chest pain|seene mein (bahut )?(dard|pain)|seene\s*mein\s*dard|दिल में दर्द|छाती में दर्द|सीने में दर्द)/i },
-  { label: 'Breathing difficulty', re: /(breathing (difficulty|problem)|saans lene mein (dikkat|problem|taklif)|saans (nahi|na) aa|सांस लेने में|श्वास)/i },
-  { label: 'Unconsciousness / fainting', re: /(unconscious|behosh|faint|gir (gaya|gayi)|बेहोश)/i },
-  { label: 'Stroke-like symptoms', re: /(slurred speech|bolne mein dikkat|face drooping|ek side weakness|लकवा|stroke)/i },
-  { label: 'Uncontrolled bleeding', re: /(bleeding (will not|won'?t|nahi) stop|khoon (nahi )?band (nahi|nahi ho)|बहुत खून|खून बंद नहीं)/i },
-  { label: 'Seizure', re: /(seizure|fits|daura|मिर्गी|दौरा)/i },
-  { label: 'Severe allergic reaction', re: /(severe allergic|allergic reaction|anaphyla|एलर्जी.*सख्त)/i },
-  { label: 'Severe abdominal pain', re: /(severe (stomach|abdominal) pain|bahut (tez )?pet (mein )?dard|पेट में बहुत दर्द)/i },
-  { label: 'High fever (>=103)', re: /(fever 10[3-9]|bukhar 10[3-9]|बुखार 10[3-9])/i },
-  { label: 'Self-harm emergency', re: /(suicid|kill myself|khudkushi|आत्महत्या)/i }
+  { label: 'Severe chest pain', re: /(chest pain|chest tightness|chest pressure|seene mein (bahut )?(dard|pain)|seene\s*mein\s*dard)/i },
+  { label: 'Breathing difficulty', re: /(breathing (difficulty|problem)|trouble breathing|shortness of breath|saans lene mein (dikkat|problem|taklif)|saans (nahi|na) aa)/i },
+  { label: 'Unconsciousness / fainting', re: /(unconscious|not responding|behosh|faint|gir (gaya|gayi))/i },
+  { label: 'Stroke-like symptoms', re: /(slurred speech|bolne mein dikkat|face drooping|ek side weakness|one side weak|left side weak|right side weak|sudden.*(left|right).*(weak|numb)|(left|right).*(arm|leg|side).*(sudden|suddenly).*(weak|numb)|difficulty speaking|difficulty understanding speech|stroke|paralysis)/i },
+  { label: 'Sudden severe headache', re: /((sudden|suddenly|explosive|thunderclap).*(worst\s*)?headache|worst headache.*(sudden|suddenly|minutes?|just now))/i },
+  { label: 'Neurologic headache symptoms', re: /(headache.*(confusion|confused|difficulty speaking|slurred speech|vision loss|seizure)|headache.*(sudden|suddenly).*((left|right|one)\s*(arm|leg|side)|face).*(weak|numb|droop)|headache.*((left|right|one)\s*(arm|leg|side)|face).*(sudden|suddenly).*(weak|numb|droop)|headache.*((left|right|one)\s*(arm|leg|side)|face).*(weak|numb|droop))/i },
+  { label: 'Headache with fever and stiff neck', re: /(headache.*(fever|bukhar).*(stiff neck|neck stiffness|gardan.*akad|gardan.*stiff))/i },
+  { label: 'Headache after head injury', re: /(headache.*(head injury|hit my head|accident|chot))/i },
+  { label: 'Uncontrolled bleeding', re: /(bleeding (will not|won'?t|nahi) stop|khoon (nahi )?band (nahi|nahi ho)|severe bleeding)/i },
+  { label: 'Seizure', re: /(seizure|fits|daura|convulsion)/i },
+  { label: 'Severe allergic reaction', re: /(severe allergic|allergic reaction|anaphyla)/i },
+  { label: 'Severe abdominal pain', re: /(severe (stomach|abdominal) pain|bahut (tez )?pet (mein )?dard)/i },
+  { label: 'High fever (>=103)', re: /(fever 10[3-9]|bukhar 10[3-9])/i },
+  { label: 'Self-harm emergency', re: /(suicid|kill myself|khudkushi)/i }
 ];
 
 export function detectRedFlags(text) {
@@ -30,6 +34,12 @@ export function detectRedFlags(text) {
 
 export const RED_FLAG_RESPONSE =
   'This may be an emergency. Please seek immediate medical attention or contact your local emergency service (108) now. Do not wait for an AI assessment.';
+
+export const POST_RED_FLAG_RESPONSE =
+  'For now, the important step is getting medical help. If you are waiting for help, do not drive yourself, stay with someone if possible, and tell them if anything changes.';
+
+export const POST_RED_FLAG_FOLLOWUP_RE =
+  /^(that'?s it\??|what (now|next)\??|now what\??|anything else\??|aur kya\??|bas\??)$/i;
 
 function read(key) {
   try { return JSON.parse(localStorage.getItem(key) || '[]'); } catch { return []; }
@@ -53,7 +63,7 @@ export function addClinicalAlert(labels, source, detail = '', at = null) {
   const alerts = read(ALERTS_KEY);
   alerts.push(alert);
   write(ALERTS_KEY, alerts);
-  addTimelineEvent(`Red-flag: ${list.join(', ')}`, `Source: ${source}${detail ? ` · ${detail}` : ''}`, 'alert', true, at);
+  addTimelineEvent(`Red-flag: ${list.join(', ')}`, `Source: ${source}${detail ? ` - ${detail}` : ''}`, 'alert', true, at);
   return alert;
 }
 
@@ -75,7 +85,7 @@ export function addTimelineEvent(title, detail = '', type = 'info', flag = false
 }
 
 // ------------------------------------------------------------
-// Patient report history — AI-extracted details from scanned
+// Patient report history - AI-extracted details from scanned
 // documents, kept as a dated medical history (newest first).
 // ------------------------------------------------------------
 
@@ -85,7 +95,7 @@ const REPORT_HISTORY_KEY = 'mk_report_history';
 export function isAbnormalValue(v) {
   const f = (v && v.flag ? String(v.flag) : '').toLowerCase().trim();
   if (!f || f === 'normal' || f === 'n' || f === '-') return false;
-  return /high|low|abnormal|critical|h$|l$|↑|↓/.test(f) || f === 'high' || f === 'low';
+  return /high|low|abnormal|critical|h$|l$|\u2191|\u2193/.test(f) || f === 'high' || f === 'low';
 }
 
 // Avoids "Dr. Dr. X" when the extracted name already carries the title.
@@ -138,9 +148,9 @@ export function addReportHistory(record) {
 
   const medCount = entry.medicines.length;
   addTimelineEvent(
-    `Report: ${entry.doc_type}${entry.diagnosis ? ` — ${entry.diagnosis}` : ''}`,
+    `Report: ${entry.doc_type}${entry.diagnosis ? ` - ${entry.diagnosis}` : ''}`,
     [entry.hospital, formatDoctor(entry.doctor), medCount ? `${medCount} medicines` : '',
-      entry.patient_name].filter(Boolean).join(' · ') || 'AI-extracted report',
+      entry.patient_name].filter(Boolean).join(' - ') || 'AI-extracted report',
     'report', abnormal.length > 0, at
   );
 
@@ -148,21 +158,21 @@ export function addReportHistory(record) {
     addClinicalAlert(
       abnormal.map((v) => `${v.test || 'Value'} ${v.flag || 'abnormal'}`),
       'document-scan',
-      abnormal.map((v) => `${v.test}: ${v.value}${v.unit ? ` ${v.unit}` : ''}${v.flag ? ` (${v.flag})` : ''}`).join(' · '),
+      abnormal.map((v) => `${v.test}: ${v.value}${v.unit ? ` ${v.unit}` : ''}${v.flag ? ` (${v.flag})` : ''}`).join(' - '),
       at
     );
   }
   return entry;
 }
 
-// PDF: department guidance — map free-text symptoms to an AYUSH department.
+// PDF: department guidance - map free-text symptoms to an AYUSH department.
 const DEPT_MAP = [
-  { dept: 'Kayachikitsa (Internal Medicine)', re: /(fever|bukhar|infection|weakness|kamzori|general|बुखार|कमज़ोरी)/i },
-  { dept: 'Shalya Tantra (Surgery)', re: /(wound|injury|hernia|stone|surgery|चोट|फोड़ा)/i },
-  { dept: 'Shalakya Tantra (ENT/Eye)', re: /(eye|aankh|ear|kaan|nose|naak|throat|gala|sinus|आँख|कान|गला)/i },
-  { dept: 'Kaumarabhritya (Pediatrics)', re: /(child|bacche|baby|infant|बच्चे)/i },
-  { dept: 'Prasuti Tantra (Gynecology)', re: /(pregnan|garbh|menstrua|period|pcod|गर्भ|माहवारी)/i },
-  { dept: 'Ayurveda', re: /(joint|jod|arthritis|gaathi|digestion|pet|pachan|acidity|skin|twacha|इलाज|जड़ी)/i }
+  { dept: 'Kayachikitsa (Internal Medicine)', re: /(fever|bukhar|infection|weakness|kamzori|general)/i },
+  { dept: 'Shalya Tantra (Surgery)', re: /(wound|injury|hernia|stone|surgery|chot)/i },
+  { dept: 'Shalakya Tantra (ENT/Eye)', re: /(eye|aankh|ear|kaan|nose|naak|throat|gala|sinus)/i },
+  { dept: 'Kaumarabhritya (Pediatrics)', re: /(child|bacche|baby|infant)/i },
+  { dept: 'Prasuti Tantra (Gynecology)', re: /(pregnan|garbh|menstrua|period|pcod)/i },
+  { dept: 'Ayurveda', re: /(joint|jod|arthritis|gaathi|digestion|pet|pachan|acidity|skin|twacha|ilaaj)/i }
 ];
 
 export function suggestDepartment(text) {

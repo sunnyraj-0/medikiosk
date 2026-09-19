@@ -1,5 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
-import { detectRedFlags, RED_FLAG_RESPONSE, addClinicalAlert } from './clinical';
+import {
+  detectRedFlags,
+  RED_FLAG_RESPONSE,
+  POST_RED_FLAG_RESPONSE,
+  POST_RED_FLAG_FOLLOWUP_RE,
+  addClinicalAlert
+} from './clinical';
 
 // ---------- speech language mapping ----------
 const LANGS = {
@@ -420,6 +426,7 @@ export default function VoiceAssistant({ selectedLanguage = 'English', questions
   const recordStartRef = useRef(0);
   const speechStartRef = useRef(null);
   const audioElRef = useRef(null);
+  const emergencyEscalatedRef = useRef(false);
 
   const isHi = lang === 'हिंदी';
   const pick = (entry) => (isHi && entry.hi ? entry.hi : entry.en);
@@ -429,12 +436,19 @@ export default function VoiceAssistant({ selectedLanguage = 'English', questions
     if (el) el.scrollTop = el.scrollHeight;
   }, [messages]);
 
-  // Probe the Gemini voice server once so the UI can show the active AI mode
+  const [serverTts, setServerTts] = useState(false);
+
+  // Probe the voice server once so the UI can show the active AI mode
   useEffect(() => {
     let alive = true;
     fetch(`${API_BASE}/`)
       .then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
-      .then((d) => { if (alive && d && d.ai === 'Gemini') setAiReady(true); })
+      .then((d) => {
+        if (alive && d && (d.ai === 'Groq' || d.ai === 'Gemini' || d.status === 'running')) {
+          setAiReady(true);
+          if (d.tts === true) setServerTts(true);
+        }
+      })
       .catch(() => {});
     return () => { alive = false; };
   }, []);
@@ -515,10 +529,21 @@ export default function VoiceAssistant({ selectedLanguage = 'English', questions
     if (muted) return;
     stopSpeaking();
     setIsSpeaking(true);
+    if (!serverTts) {
+      speakWithBrowser(text);
+      return;
+    }
     try {
       const res = await fetch(`${API_BASE}/tts?text=${encodeURIComponent(text)}`, { method: 'POST' });
-      if (!res.ok) throw new Error(`tts ${res.status}`);
+      if (!res.ok || res.status === 204) {
+        speakWithBrowser(text);
+        return;
+      }
       const blob = await res.blob();
+      if (!blob || blob.size === 0) {
+        speakWithBrowser(text);
+        return;
+      }
       const url = URL.createObjectURL(blob);
       const audio = new Audio(url);
       audioElRef.current = audio;
@@ -530,7 +555,7 @@ export default function VoiceAssistant({ selectedLanguage = 'English', questions
     }
   };
 
-  // Keep chat replies insightful but tight: one sentence, no emojis, no repeats
+  // Keep chat replies clean and readable without truncating full sentences
   const sanitizeReply = (raw) => {
     if (!raw) return raw;
     let out = String(raw)
@@ -539,8 +564,6 @@ export default function VoiceAssistant({ selectedLanguage = 'English', questions
       .replace(/[*#`_>]+/g, '')
       .replace(/\s+/g, ' ')
       .trim();
-    const m = out.match(/^(.+?[.?!])(?:\s|$)/s);
-    if (m && out.length > m[1].length + 40) out = m[1];
     return out;
   };
 
@@ -549,6 +572,14 @@ export default function VoiceAssistant({ selectedLanguage = 'English', questions
     if (!clean || aiBusy) return;
     setMessages((m) => [...m, { role: 'user', text: clean }]);
     setAiBusy(true);
+    if (emergencyEscalatedRef.current && POST_RED_FLAG_FOLLOWUP_RE.test(clean)) {
+      const reply = sanitizeReply(POST_RED_FLAG_RESPONSE);
+      setAiBusy(false);
+      setMessages((m) => [...m, { role: 'assistant', text: reply }]);
+      speak(reply);
+      return;
+    }
+
     // PDF: continuous red-flag surveillance — alerts fire instantly, before any model call
     const flags = detectRedFlags(clean);
     if (flags.length) {
@@ -556,6 +587,7 @@ export default function VoiceAssistant({ selectedLanguage = 'English', questions
     }
     let reply = null;
     if (flags.length) {
+      emergencyEscalatedRef.current = true;
       reply = RED_FLAG_RESPONSE;
     } else if (aiReady) {
       try {
@@ -771,7 +803,7 @@ export default function VoiceAssistant({ selectedLanguage = 'English', questions
             <div className="text-center">
               <p className="text-xs font-semibold text-gray-600 uppercase">🎙️ Voice Assistant</p>
               <p className="text-[10px] text-gray-500 font-medium">
-                {lang} • {aiReady ? '✨ Gemini AI' : supported ? '🎤 voice ready' : '⌨️ text mode'}
+                {lang} • {aiReady ? '✨ MediKiosk AI' : supported ? '🎤 voice ready' : '⌨️ text mode'}
               </p>
             </div>
             <button
@@ -802,7 +834,7 @@ export default function VoiceAssistant({ selectedLanguage = 'English', questions
           <div ref={chatRef} className="flex-1 overflow-y-auto px-4 py-4 space-y-3 bg-gray-50">
             {aiReady && (
               <div className="bg-green-50 border border-green-200 rounded-lg px-3 py-2 text-[11px] text-green-800 font-medium">
-                Gemini AI is on — I understand Hindi, English & Hinglish and remember our conversation. Tap the mic and talk naturally.
+                MediKiosk AI is active — I understand your language and remember our conversation. Tap the mic or type below.
               </div>
             )}
             {!supported && !aiReady && (
