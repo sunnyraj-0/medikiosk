@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { ChevronRight, Plus, X } from 'lucide-react';
 import VoiceAssistant from './VoiceAssistant';
+import LiveReport from './LiveReport';
 import { supabase } from './supabaseClient';
 import {
   detectRedFlags,
   RED_FLAG_RESPONSE,
   addClinicalAlert,
   getAlerts,
+  hasChatTopic,
   getTimeline,
   addTimelineEvent,
   addReportHistory,
@@ -1761,9 +1763,10 @@ const MediKioskApp = () => {
                   {t('sos_emergency')}
                 </button>
 
+                {/* Clinical alerts stay hidden until the patient reports them in an AI chat */}
                 {(() => {
                   const alerts = getAlerts();
-                  const latest = alerts[alerts.length - 1];
+                  const latest = alerts.filter((a) => a.source === 'Voice Assistant').pop();
                   return latest ? (
                     <div className="bg-red-50 border border-red-400 rounded-lg p-3 mb-4 flex items-start gap-2">
                       <span className="text-xl">🚩</span>
@@ -1789,18 +1792,21 @@ const MediKioskApp = () => {
                   </div>
                 )}
 
-                <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
-                  <p className="text-xs font-bold text-green-700 mb-2">💊 {t('medicine_times')}</p>
-                  {medicines.length ? medicines.map((m, i) => (
-                    <div key={i} className="flex items-center justify-between py-1.5 border-b border-green-100 last:border-0">
-                      <div>
-                        <p className="text-xs font-semibold text-gray-900">{m.name} · {m.dose}</p>
-                        <p className="text-[10px] text-gray-600">{m.times.join(' · ')}</p>
+                {/* Medicine times stay hidden until the patient mentions them in an AI chat */}
+                {hasChatTopic('medicines') && (
+                  <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
+                    <p className="text-xs font-bold text-green-700 mb-2">💊 {t('medicine_times')}</p>
+                    {medicines.length ? medicines.map((m, i) => (
+                      <div key={i} className="flex items-center justify-between py-1.5 border-b border-green-100 last:border-0">
+                        <div>
+                          <p className="text-xs font-semibold text-gray-900">{m.name} · {m.dose}</p>
+                          <p className="text-[10px] text-gray-600">{m.times.join(' · ')}</p>
+                        </div>
+                        <span className="text-[10px] font-bold text-green-700 bg-white border border-green-300 rounded-full px-2 py-0.5">{t('today')}</span>
                       </div>
-                      <span className="text-[10px] font-bold text-green-700 bg-white border border-green-300 rounded-full px-2 py-0.5">{t('today')}</span>
-                    </div>
-                  )) : <p className="text-xs text-gray-600">{t('no_medicines')}</p>}
-                </div>
+                    )) : <p className="text-xs text-gray-600">{t('no_medicines')}</p>}
+                  </div>
+                )}
 
                 <div className="grid grid-cols-2 gap-3 pb-6">
                   {dashItems.map((item, idx) => (
@@ -2254,47 +2260,14 @@ const MediKioskApp = () => {
   }
 
   // Screen 7: Camera / Live Reporting
+  // Screen 7: Live Report — real camera flow (record first impression, ask
+  // questions aloud, then prepare the report from the patient's answers).
   if (currentScreen === 'camera') {
     return (
-      <div className="min-h-screen bg-gray-100 flex items-center justify-center p-4 relative">
-        {renderBackground()}
-        <div className="w-full max-w-sm bg-white rounded-xl shadow-lg overflow-hidden">
-          {renderTricolor()}
-          {renderThemeToggle()}
-          {renderLanguageSwitcher()}
-          {renderBackButton('dashboard')}
-          <div className="relative h-screen flex flex-col">
-            {renderChakra()}
-            <div className="relative z-10">
-              <div className="bg-gray-50 px-4 py-3 border-b border-gray-200">
-                <p className="text-xs font-semibold text-gray-600 uppercase">{t('live_reporting')}</p>
-              </div>
-
-              <div className="px-6 pt-6">
-                <h2 className="text-lg font-bold text-gray-900 mb-1">{t('capture_photo')}</h2>
-                <p className="text-sm text-gray-700 mb-4 font-medium">{t('position_face')}</p>
-
-                <div className="bg-black rounded-lg p-4 mb-4 aspect-video flex items-center justify-center">
-                  <p className="text-4xl">📷</p>
-                </div>
-
-                <button
-                  onClick={() => setCurrentQuestion(0) || setCurrentScreen('ayushAssessment')}
-                  className="w-full bg-green-700 text-white py-3 rounded-lg font-semibold hover:bg-green-800 transition mb-2"
-                >
-                  {t('start_camera')}
-                </button>
-                <button
-                  onClick={() => setCurrentScreen('ayushAssessment')}
-                  className="w-full bg-white text-gray-800 border border-gray-300 py-2.5 rounded-lg font-semibold hover:bg-gray-50 transition"
-                >
-                  {t('continue_to_assessment')}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
+      <LiveReport
+        selectedLanguage={selectedLanguage}
+        onBack={() => setCurrentScreen('dashboard')}
+      />
     );
   }
 

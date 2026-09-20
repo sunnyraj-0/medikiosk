@@ -4,8 +4,13 @@ import {
   RED_FLAG_RESPONSE,
   POST_RED_FLAG_RESPONSE,
   POST_RED_FLAG_FOLLOWUP_RE,
-  addClinicalAlert
+  addClinicalAlert,
+  markChatTopic
 } from './clinical';
+
+// Free-text signals that the patient is talking about their medication —
+// unlocks the Medicine Times card on the dashboard.
+const MEDICINE_MENTION_RE = /(medicine|medicines|medication|tablet|capsule|syrup|dose|dosage|prescri|dawa|dawai|goli|awas)/i;
 
 // ---------- speech language mapping ----------
 const LANGS = {
@@ -678,6 +683,9 @@ export default function VoiceAssistant({ selectedLanguage = 'English', questions
     const flags = detectRedFlags(clean);
     if (flags.length) {
       addClinicalAlert(flags, 'Voice Assistant', clean.slice(0, 120));
+    }
+    if (MEDICINE_MENTION_RE.test(clean)) {
+      markChatTopic('medicines');
     }
     let reply = null;
     if (flags.length) {

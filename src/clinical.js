@@ -50,6 +50,25 @@ function write(key, arr) {
 
 export function getAlerts() { return read(ALERTS_KEY); }
 
+// ------------------------------------------------------------
+// Chat-reported topics. The dashboard keeps its Medicine Times and
+// Clinical Alerts cards hidden until the patient actually reports
+// something relevant while chatting with the AI assistant.
+// ------------------------------------------------------------
+
+const CHAT_TOPICS_KEY = 'mk_chat_topics';
+
+export function markChatTopic(topic) {
+  if (!topic) return;
+  const topics = read(CHAT_TOPICS_KEY);
+  topics.push({ topic, at: new Date().toISOString() });
+  write(CHAT_TOPICS_KEY, topics);
+}
+
+export function hasChatTopic(topic) {
+  return read(CHAT_TOPICS_KEY).some((t) => t.topic === topic);
+}
+
 export function addClinicalAlert(labels, source, detail = '', at = null) {
   const list = labels.length ? (Array.isArray(labels) ? labels : [labels]) : [];
   if (!list.length) return null;
